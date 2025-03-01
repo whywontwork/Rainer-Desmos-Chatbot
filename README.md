@@ -25,16 +25,7 @@ The application is organized into the following modules:
 
 ## Installation
 
-### Direct Mode (No Server Required)
-
-1. Clone the repository
-2. Open `index.html` in your browser
-3. Enter your Anthropic API key in the settings
-4. Start chatting with Claude!
-
-The application uses cors-anywhere.herokuapp.com to bypass CORS restrictions when making direct API calls to Anthropic from the browser.
-
-### Server Mode (Optional)
+### Server Setup (Required)
 
 1. Clone the repository 
 2. Install dependencies:
@@ -45,7 +36,9 @@ The application uses cors-anywhere.herokuapp.com to bypass CORS restrictions whe
    ```bash
    node server.mjs
    ```
-4. Open `index.html` in your browser
+4. Open `index.html` in your browser or access the deployed site
+
+The server is required as it acts as a proxy for API communication, avoiding CORS issues with the Anthropic API. For deployment on platforms like render.com, you need to deploy both the frontend files and the server component.
 
 ## Usage
 
@@ -77,11 +70,19 @@ Edit settings through the Settings menu, including:
 - Font size
 - Model selection
 
+## Deployment
+
+To deploy on render.com or similar platforms:
+
+1. Set up a web service that runs `node server.mjs`
+2. Configure the service to serve static files from the project directory
+3. Make sure to include all necessary dependencies in your deploy
+
 ## Development
 
 ### Key Files
 
-- `server.mjs` - Express proxy server for Claude API communication (optional)
+- `server.mjs` - Express proxy server for Claude API communication (required)
 - `index.html` - Main application HTML
 - `core/app.js` - Core application logic
 - `api/api.js` - API client and helpers
@@ -90,11 +91,14 @@ Edit settings through the Settings menu, including:
 - `config/config.js` - Configuration management
 - `ui/styles.css` - Styling
 
-### CORS Handling
+### API Proxy
 
-- When running locally (localhost), the app automatically uses the local proxy server if available
-- In production environments, the app uses cors-anywhere.herokuapp.com to bypass CORS restrictions
-- The proper mode is automatically selected based on the hosting environment
+The application uses a server-side proxy to communicate with the Anthropic API for several reasons:
+- Avoids CORS issues that occur with browser-based API calls
+- Keeps API keys more secure by not exposing them in browser code
+- Allows standardizing requests and handling errors consistently
+
+The frontend code automatically determines the correct proxy URL based on the environment.
 
 ## License
 
@@ -104,4 +108,3 @@ This project is provided for educational and personal use.
 
 - Anthropic for Claude API
 - Desmos for the graphing calculator API
-- cors-anywhere.herokuapp.com for CORS proxy service

@@ -1,8 +1,7 @@
 # CLAUDE.md - Development Guidelines for Rainer_Smart
 
 ## Build/Run/Test Commands
-- Run directly: Open `index.html` in browser (no server needed, calls Anthropic API directly)
-- Run with server: `node server.mjs` or `npm start` (optional for proxy mode)
+- Run server: `node server.mjs` or `npm start` (required for API proxy)
 - Development mode: `npm run dev` (auto-restart on changes when using server)
 - Test API: `curl -X POST https://api.anthropic.com/v1/messages -H "Content-Type: application/json" -H "x-api-key: YOUR_API_KEY" -H "anthropic-version: 2023-06-01" -d '{"model":"claude-3-7-sonnet-20250219", "messages":[{"role":"user","content":"Hello"}], "system":"You are Rainer_Smart"}'`
 
@@ -16,12 +15,13 @@
 - **File Structure**: Modular organization (api/, config/, core/, desmos/, ui/)
 
 ## Architecture Notes
-Web-based Rainer_Smart client with direct Anthropic API integration through a CORS proxy. Features Desmos graphing calculator integration for mathematical visualizations. Uses local storage for config and chat history. API keys must be provided by the user.
+Web-based Rainer_Smart client with a server proxy for Anthropic API communication. Features Desmos graphing calculator integration for mathematical visualizations. Uses local storage for config and chat history. API keys must be provided by the user.
 
-### CORS Handling
-- Local development: Uses a local proxy server (localhost:3000) when running on localhost
-- Production deployment: Uses cors-anywhere.herokuapp.com as a CORS proxy to bypass browser security restrictions
-- The CORS proxy is automatically selected based on the hosting environment
+### API Proxy
+- The server acts as a CORS proxy between the frontend and Anthropic's API
+- The frontend code automatically uses the correct URL for the proxy based on environment
+- This setup avoids CORS issues while keeping API keys secure
+- The proxy is required for all API communication
 
 ## UI Functionality
 - The application has a dropdown menu structure that currently isn't functional and needs to be implemented

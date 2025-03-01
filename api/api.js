@@ -15,21 +15,17 @@ class ClaudeAPI {
     constructor(apiKey) {
         this.apiKey = apiKey;
         
-        // Determine if we're in a development environment with a local server
-        const isDevEnv = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        // Always use a proxy server to avoid CORS issues
+        // For local development, use localhost
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         
-        // Use local proxy server if in development, otherwise use a CORS proxy for production
-        if (isDevEnv && window.location.port.includes('3000')) {
-            // Local development with server running
-            this.useLocalProxy = true;
-            this.baseUrl = 'http://localhost:3000/proxy/claude';
-        } else {
-            // Production environment - use a CORS proxy service
-            this.useLocalProxy = false;
-            // Using a more reliable CORS proxy service
-            this.corsProxyUrl = 'https://cors-anywhere.herokuapp.com/';
-            this.baseUrl = 'https://api.anthropic.com/v1/messages';
-        }
+        // Get base URL for the proxy
+        const port = isLocalhost ? ':3000' : '';
+        const protocol = window.location.protocol;
+        const hostname = window.location.hostname;
+        
+        // Build complete proxy URL
+        this.baseUrl = `${protocol}//${hostname}${port}/proxy/claude`;
     }
 
     /**
@@ -39,39 +35,15 @@ class ClaudeAPI {
      */
     async createMessage(params) {
         try {
-            // Format API request based on endpoint
-            const apiRequest = {
-                model: params.model,
-                max_tokens: params.max_tokens || 4096,
-                messages: params.messages,
-                system: params.system
-            };
-            
-            let response;
-            
-            if (this.useLocalProxy) {
-                // Use the local proxy server
-                response = await fetch(this.baseUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': this.apiKey
-                    },
-                    body: JSON.stringify(params)
-                });
-            } else {
-                // Use CORS proxy for production
-                const proxyUrl = `${this.corsProxyUrl}${this.baseUrl}`;
-                response = await fetch(proxyUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': this.apiKey,
-                        'anthropic-version': '2023-06-01'
-                    },
-                    body: JSON.stringify(apiRequest)
-                });
-            }
+            // Send request to our proxy
+            const response = await fetch(this.baseUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': this.apiKey
+                },
+                body: JSON.stringify(params)
+            });
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -79,18 +51,7 @@ class ClaudeAPI {
             }
 
             const apiResponse = await response.json();
-            
-            // Format the response to match our expected format
-            if (this.useLocalProxy) {
-                return apiResponse;
-            } else {
-                return {
-                    id: apiResponse.id,
-                    content: apiResponse.content,
-                    role: apiResponse.role,
-                    usage: apiResponse.usage
-                };
-            }
+            return apiResponse;
         } catch (error) {
             console.error('Error calling Claude API:', error);
             throw error;

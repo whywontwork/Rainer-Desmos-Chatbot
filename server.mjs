@@ -9,7 +9,8 @@
 
 import express from 'express';
 import cors from 'cors';
-import { Anthropic } from '@anthropic-ai/sdk';
+import pkg from '@anthropic-ai/sdk';
+const { Anthropic } = pkg;
 import fs from 'fs';
 import path from 'path';
 

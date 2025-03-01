@@ -64,8 +64,9 @@ const app = express();
 // Configure CORS and JSON parsing
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'x-api-key']
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'x-api-key', 'anthropic-version', 'anthropic-beta'],
+    exposedHeaders: ['Content-Type', 'x-api-key', 'anthropic-version', 'anthropic-beta']
 }));
 
 app.use(express.json({limit: '200mb', extended: true}));
@@ -90,8 +91,11 @@ app.post('/proxy/claude', async (req, res) => {
         
         if (!apiKey) {
             return res.status(401).json({
-                error: 'API key is required',
-                message: 'Please provide an API key in the x-api-key header'
+                error: {
+                    type: 'api_error',
+                    message: 'API key is required'
+                },
+                message: 'Please provide a valid API key in the x-api-key header'
             });
         }
         

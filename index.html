@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rainer_Smart Assistant with Desmos</title>
+    <!-- Import styles -->
+    <link rel="stylesheet" href="ui/styles.css">
+    <!-- Syntax highlighting library -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <!-- Desmos graphing calculator API -->
+    <script src="https://www.desmos.com/api/v1.10/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Main Menu -->
+        <div class="main-menu">
+            <div class="menu-group">
+                <div class="menu-item" id="file-menu">File</div>
+                <div class="dropdown-menu">
+                    <div class="dropdown-item" id="new-chat">New Chat</div>
+                    <div class="dropdown-item" id="open-chat">Open Chat</div>
+                    <div class="dropdown-item" id="save-chat">Save Chat</div>
+                    <div class="dropdown-item" id="export-chat">Export Chat</div>
+                </div>
+            </div>
+            <div class="menu-group">
+                <div class="menu-item" id="edit-menu">Edit</div>
+                <div class="dropdown-menu">
+                    <div class="dropdown-item" id="clear-chat">Clear Chat</div>
+                    <div class="dropdown-item" id="copy-last">Copy Last Message</div>
+                    <div class="dropdown-item" id="copy-all">Copy All Messages</div>
+                </div>
+            </div>
+            <div class="menu-group">
+                <div class="menu-item" id="settings-menu">Settings</div>
+                <div class="dropdown-menu">
+                    <div class="dropdown-item" id="api-settings">API Settings</div>
+                    <div class="dropdown-item" id="theme-settings">Appearance</div>
+                    <div class="dropdown-item" id="chat-settings">Chat Settings</div>
+                </div>
+            </div>
+            <div class="menu-group">
+                <div class="menu-item" id="help-menu">Help</div>
+                <div class="dropdown-menu">
+                    <div class="dropdown-item" id="about">About</div>
+                    <div class="dropdown-item" id="keyboard-shortcuts">Keyboard Shortcuts</div>
+                    <div class="dropdown-item" id="documentation">Documentation</div>
+                </div>
+            </div>
+            
+            <!-- Claude Model Selector -->
+            <div class="menu-group">
+                <select id="model-selector" class="model-selector">
+                    <!-- Populated dynamically by JavaScript -->
+                </select>
+            </div>
+            
+            <!-- Graph Button -->
+            <button id="toggle-graph-btn" class="toggle-graph-button">
+                📊 Graph
+            </button>
+            
+            <!-- Status Bar -->
+            <div id="status-bar" class="status-bar">Ready</div>
+        </div>
+        
+        <!-- Main Content Area -->
+        <div class="content-container">
+            <!-- Chat Container -->
+            <div class="chat-container" id="chat-container">
+                <!-- Chat Area - Messages will be added here -->
+                <div id="chat-area" class="chat-area"></div>
+                
+                <!-- Input Area -->
+                <div class="input-container">
+                    <div id="thinking-indicator" class="thinking-indicator hidden">Rainer_Smart is thinking...</div>
+                    
+                    <!-- System Prompt Toggle -->
+                    <div id="system-toggle" class="system-toggle">► System Prompt</div>
+                    
+                    <!-- System Prompt Container (Hidden by default) -->
+                    <div id="system-container" class="system-container hidden">
+                        <textarea id="system-input" class="system-input" placeholder="Optional system prompt to guide Rainer_Smart's responses (e.g. 'You are a helpful AI assistant')"></textarea>
+                    </div>
+                    
+                    <!-- File Preview (Hidden by default) -->
+                    <div id="file-preview" class="file-preview hidden"></div>
+                    
+                    <!-- Message Input Area -->
+                    <div class="message-input-area">
+                        <textarea id="text-input" class="text-input" placeholder="Type a message..." rows="1"></textarea>
+                        <button id="send-button" class="send-button">Send</button>
+                    </div>
+                    
+                    <!-- Attachment Buttons -->
+                    <div class="attachment-buttons">
+                        <input type="file" id="file-input" class="hidden" multiple>
+                        <button id="file-button" class="attachment-button">
+                            <span class="attachment-button-icon">📎</span> Attach Files
+                        </button>
+                        <button id="clipboard-button" class="attachment-button">
+                            <span class="attachment-button-icon">📋</span> Paste from Clipboard
+                        </button>
+                        <button id="clear-button" class="attachment-button">
+                            <span class="attachment-button-icon">🗑️</span> Clear Chat
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Desmos Calculator Container -->
+            <div id="calculator-container" class="calculator-container">
+                <!-- Toggle Button -->
+                <div id="toggle-calculator" class="calculator-toggle">⬅️</div>
+                
+                <!-- Calculator Header -->
+                <div class="calculator-header">
+                    <div class="calculator-title">Desmos Calculator</div>
+                    <div class="calculator-controls">
+                        <button id="save-graph-btn" class="calculator-button">Save</button>
+                        <button id="load-graph-btn" class="calculator-button">Load</button>
+                        <button id="share-graph-btn" class="calculator-button">Share</button>
+                        <button id="clear-graph-btn" class="calculator-button">Clear</button>
+                    <button id="export-graph-btn" class="calculator-control-btn" title="Export Graph">📤 Export</button>
+                    </div>
+                </div>
+                
+                <!-- Desmos Calculator -->
+                <div id="desmos-calculator" class="desmos-calculator"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Application Scripts -->
+    <!-- Load modules in the correct order -->
+    <script type="module">
+        // Import dependencies
+        import { Config } from './config/config.js';
+        import { ClaudeAPI, ChatStorage, FileHandler, TextFormatter } from './api/api.js';
+        import { DesmosIntegration } from './desmos/desmos-core.js';
+        import { EquationProcessor, DirectPlotHandler, AutoPlotHandler } from './desmos/equation-processor.js';
+        import { ClaudeChatbot } from './core/app.js';
+        
+        // Initialize memory optimization (optional)
+        if (window.optimizeMemory) {
+            window.optimizeMemory();
+        }
+        
+        // Create and initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Apply default theme
+            Config.applyTheme('sepia');
+            
+            // Create chatbot instance
+            window.chatbot = new ClaudeChatbot();
+            
+            // Apply syntax highlighting to code blocks
+            if (window.hljs) {
+                window.hljs.highlightAll();
+            }
+        });
+    </script>
+</body>
+</html>

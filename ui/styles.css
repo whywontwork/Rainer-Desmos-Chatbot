@@ -1,0 +1,853 @@
+/**
+ * Master CSS file for Claude Assistant UI
+ * 
+ * This file contains all styles for the application, including:
+ * - Base layout and general styles
+ * - Chat interface
+ * - Desmos integration
+ * - Graph display
+ * - Code blocks and equation formatting
+ * - Responsive design
+ * 
+ * @version 1.0.0
+ */
+
+/* -------------------- */
+/* Variables and Resets */
+/* -------------------- */
+
+:root {
+    /* Theme colors - will be set by JS */
+    --bg-color: #F4ECD8;
+    --text-color: #5B4636;
+    --chat-bg-color: #F8F4E9;
+    --input-bg-color: #F4ECD8;
+    --button-bg-color: #E6D9BE;
+    --highlight-bg-color: #A67D5D;
+    --highlight-text-color: #FFFFFF;
+    
+    /* Fixed colors */
+    --border-color: #D1D1D1;
+    --code-bg: #2d2d2d;
+    --code-fg: #48633d;
+    --error-color: #e74c3c;
+    --success-color: #2ecc71;
+    --warning-color: #f39c12;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    
+    /* Layout */
+    --panel-width: 250px;
+    --sidebar-width: 300px;
+    --header-height: 50px;
+    --footer-height: 60px;
+    --calculator-width: 450px;
+    
+    /* Typography */
+    --base-font-size: 16px;
+    --small-font-size: 14px;
+    --large-font-size: 18px;
+    --code-font-size: 14px;
+    
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    
+    /* Borders and Radius */
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    
+    /* Animation */
+    --transition-fast: 0.2s;
+    --transition-medium: 0.3s;
+    --transition-slow: 0.5s;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
+    font-size: var(--base-font-size);
+    line-height: 1.5;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ------------- */
+/* Main Menu Bar */
+/* ------------- */
+
+.main-menu {
+    display: flex;
+    background-color: var(--button-bg-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 10px;
+    height: var(--header-height);
+    align-items: center;
+    z-index: 10;
+}
+
+.menu-group {
+    position: relative;
+}
+
+.menu-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: var(--small-font-size);
+    transition: background-color var(--transition-fast);
+}
+
+.menu-item:hover {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 200px;
+    background-color: var(--input-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    box-shadow: 0 2px 5px var(--shadow-color);
+    z-index: 100;
+    display: none;
+}
+
+.dropdown-menu.active {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+}
+
+.status-bar {
+    margin-left: auto;
+    padding: 10px;
+    font-size: var(--small-font-size);
+    opacity: 0.8;
+}
+
+/* ----------------- */
+/* Main Chat Content */
+/* ----------------- */
+
+.content-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-area {
+    flex: 1;
+    padding: var(--spacing-md);
+    overflow-y: auto;
+    background-color: var(--chat-bg-color);
+}
+
+.message-container {
+    margin-bottom: var(--spacing-lg);
+    max-width: 100%;
+    word-wrap: break-word;
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-xs);
+}
+
+.message-timestamp {
+    margin-right: var(--spacing-sm);
+    opacity: 0.6;
+    font-size: var(--small-font-size);
+}
+
+.message-sender {
+    font-weight: bold;
+}
+
+.user-label {
+    color: var(--highlight-bg-color);
+}
+
+.claude-label {
+    color: var(--text-color);
+}
+
+.system-label {
+    color: var(--warning-color);
+}
+
+.message-content {
+    line-height: 1.6;
+    font-size: var(--base-font-size);
+    white-space: pre-wrap;
+}
+
+.message-content p {
+    margin-bottom: var(--spacing-md);
+}
+
+.message-content ul, .message-content ol {
+    margin-left: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+}
+
+.message-content img {
+    max-width: 100%;
+    height: auto;
+    margin: var(--spacing-md) 0;
+}
+
+/* -------------------- */
+/* Input and Send Areas */
+/* -------------------- */
+
+.input-container {
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-md);
+    background-color: var(--input-bg-color);
+    border-top: 1px solid var(--border-color);
+}
+
+.thinking-indicator {
+    padding: var(--spacing-sm);
+    font-style: italic;
+    color: var(--text-color);
+    opacity: 0.7;
+    text-align: center;
+}
+
+.message-input-area {
+    display: flex;
+    align-items: flex-end;
+}
+
+.text-input {
+    flex: 1;
+    min-height: 40px;
+    max-height: 150px;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    resize: none;
+    overflow-y: auto;
+    background-color: var(--chat-bg-color);
+    color: var(--text-color);
+    font-size: var(--base-font-size);
+}
+
+.text-input:focus {
+    outline: none;
+    border-color: var(--highlight-bg-color);
+}
+
+.send-button {
+    margin-left: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+    cursor: pointer;
+    font-size: var(--base-font-size);
+    transition: background-color var(--transition-fast);
+}
+
+.send-button:hover {
+    background-color: var(--highlight-bg-color);
+    opacity: 0.9;
+}
+
+.attachment-buttons {
+    display: flex;
+    margin-top: var(--spacing-sm);
+}
+
+.attachment-button {
+    margin-right: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: transparent;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: var(--small-font-size);
+    display: flex;
+    align-items: center;
+}
+
+.attachment-button:hover {
+    background-color: var(--button-bg-color);
+}
+
+.attachment-button-icon {
+    margin-right: var(--spacing-xs);
+}
+
+.file-preview {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm);
+    background-color: var(--chat-bg-color);
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.file-preview-item {
+    margin: var(--spacing-xs);
+    position: relative;
+}
+
+.file-preview-item img {
+    max-width: 100px;
+    max-height: 100px;
+    border-radius: var(--border-radius-sm);
+}
+
+.file-preview-remove {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    background-color: var(--error-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+/* ------------------- */
+/* Code Block Styling */
+/* ------------------- */
+
+.code-block {
+    margin: var(--spacing-md) 0;
+    background-color: var(--code-bg);
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+}
+
+.code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: #f8f9fa;
+}
+
+.code-language {
+    font-family: monospace;
+    font-size: var(--small-font-size);
+    color: rgba(0, 0, 0, 0.7);
+}
+
+.code-copy-button {
+    font-size: var(--small-font-size);
+    background-color: transparent;
+    border: none;
+    color: rgba(0, 0, 0, 0.7);
+    cursor: pointer;
+    padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.code-copy-button:hover {
+    color: var(--highlight-text-color);
+}
+
+.code-block pre {
+    margin: 0;
+    padding: var(--spacing-md);
+    overflow-x: auto;
+}
+
+.code-block code {
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: var(--code-font-size);
+    color: var(--code-fg);
+}
+
+/* Inline code */
+.message-content code:not(.code-block code) {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 2px 4px;
+    border-radius: var(--border-radius-sm);
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+/* ------------------------ */
+/* Equation and Math Styling */
+/* ------------------------ */
+
+.equation-block {
+    font-family: "Times New Roman", Times, serif;
+    background-color: #000000;
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin: var(--spacing-sm) 0;
+    border-left: 3px solid var(--highlight-bg-color);
+    display: inline-block;
+    font-style: italic;
+}
+
+.math-styled {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 1.1em;
+    background-color: #f8f9fa;
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin: var(--spacing-sm) 0;
+    border-left: 3px solid var(--highlight-bg-color);
+    display: inline-block;
+}
+
+.latex-math {
+    font-family: "Times New Roman", Times, serif;
+    font-style: italic;
+    font-size: 1.1em;
+}
+
+.math-block, .math-inline {
+    font-family: "Times New Roman", Times, serif;
+    font-style: italic;
+    background-color: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: var(--border-radius-sm);
+}
+
+.math-block {
+    display: block;
+    margin: 1em 0;
+    padding: 10px;
+    border-left: 2px solid var(--highlight-bg-color);
+}
+
+/* ------------------------ */
+/* Markdown Formatting */
+/* ------------------------ */
+
+.message-content h2 {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin: 1em 0 0.5em 0;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--highlight-bg-color);
+}
+
+.message-content strong {
+    font-weight: bold;
+    color: var(--highlight-bg-color);
+}
+
+/* ------------------- */
+/* Graph Styling */
+/* ------------------- */
+
+.graph-link-container {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: var(--border-radius-md);
+    border: 1px solid #dee2e6;
+    max-width: 100%;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.graph-link-container code {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+.equations-preview {
+    margin-top: 4px;
+    padding-left: 8px;
+}
+
+
+.graph-button {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: pointer;
+    font-size: var(--small-font-size);
+}
+
+.graph-button:hover {
+    opacity: 0.9;
+}
+
+.graph-reference {
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    background-color: #f8f9fa;
+    border-radius: var(--border-radius-sm);
+    border-left: 3px solid var(--highlight-bg-color);
+}
+
+.graph-reference:hover {
+    background-color: #f0f0f0;
+}
+
+.graph-dialog-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    font-family: monospace;
+    font-size: var(--small-font-size);
+}
+
+/* ------------------------ */
+/* Desmos Calculator Styling */
+/* ------------------------ */
+
+.calculator-container {
+    position: fixed;
+    top: var(--header-height);
+    right: -450px; /* Start off-screen */
+    width: var(--calculator-width);
+    height: calc(100vh - var(--header-height));
+    background-color: #fff;
+    border-left: 1px solid var(--border-color);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    transition: right var(--transition-medium) ease-in-out;
+    overflow: hidden;
+}
+
+.calculator-container.active {
+    right: 0;
+}
+
+.calculator-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--button-bg-color);
+}
+
+.calculator-title {
+    font-weight: bold;
+    font-size: var(--base-font-size);
+}
+
+.calculator-controls {
+    display: flex;
+}
+
+.calculator-button {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    margin-left: var(--spacing-xs);
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    font-size: var(--small-font-size);
+}
+
+.calculator-button:hover {
+    color: var(--highlight-bg-color);
+}
+
+.calculator-toggle {
+    position: absolute;
+    left: -30px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 80px;
+    background-color: var(--button-bg-color);
+    border: 1px solid var(--border-color);
+    border-right: none;
+    border-radius: 5px 0 0 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 20px;
+}
+
+.desmos-calculator {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+}
+
+.toggle-graph-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-sm);
+    margin-right: var(--spacing-md);
+    background-color: var(--button-bg-color);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.toggle-graph-button.active {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+}
+
+.toggle-graph-button:hover {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+}
+
+/* ---------------- */
+/* Modal Styling */
+/* ---------------- */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    background-color: var(--bg-color);
+    border-radius: var(--border-radius-md);
+    max-width: 90%;
+    width: 500px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: var(--spacing-md);
+    background-color: var(--button-bg-color);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-title {
+    font-weight: bold;
+    font-size: var(--large-font-size);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--text-color);
+}
+
+.modal-content {
+    padding: var(--spacing-md);
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+}
+
+.modal-button {
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-left: var(--spacing-sm);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-size: var(--base-font-size);
+}
+
+.modal-button-primary {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+}
+
+.modal-button-secondary {
+    background-color: var(--button-bg-color);
+    color: var(--text-color);
+}
+
+/* ---------------- */
+/* Settings Styling */
+/* ---------------- */
+
+.settings-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.settings-title {
+    font-size: var(--large-font-size);
+    margin-bottom: var(--spacing-md);
+    font-weight: bold;
+    color: var(--highlight-bg-color);
+}
+
+.settings-group {
+    margin-bottom: var(--spacing-md);
+}
+
+.settings-label {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+    font-weight: bold;
+}
+
+.settings-input {
+    width: 100%;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--chat-bg-color);
+    color: var(--text-color);
+    font-size: var(--base-font-size);
+}
+
+.settings-select {
+    width: 100%;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--chat-bg-color);
+    color: var(--text-color);
+    font-size: var(--base-font-size);
+}
+
+.settings-checkbox {
+    margin-right: var(--spacing-xs);
+}
+
+/* ---------------- */
+/* Responsive Design */
+/* ---------------- */
+
+@media screen and (max-width: 768px) {
+    :root {
+        --calculator-width: 100%;
+    }
+
+    .calculator-container {
+        width: 100%;
+        right: -100%;
+    }
+
+    .chat-container {
+        width: 100%;
+    }
+
+    .menu-item {
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+
+    .attachment-buttons {
+        flex-wrap: wrap;
+    }
+
+    .attachment-button {
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .calculator-toggle {
+        left: -25px;
+        width: 25px;
+        height: 60px;
+        font-size: 16px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    :root {
+        --base-font-size: 14px;
+        --small-font-size: 12px;
+        --large-font-size: 16px;
+        --code-font-size: 12px;
+    }
+
+    .main-menu {
+        flex-wrap: wrap;
+        height: auto;
+    }
+
+    .menu-group {
+        flex: 1;
+        min-width: 80px;
+    }
+
+    .menu-item {
+        text-align: center;
+        padding: 8px 5px;
+    }
+
+    .dropdown-menu {
+        min-width: 150px;
+    }
+
+    .status-bar {
+        width: 100%;
+        text-align: center;
+        order: 3;
+        padding: 5px;
+    }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "claude-assistant-desmos",
+  "version": "1.0.0",
+  "description": "Web-based Claude Assistant with Desmos integration",
+  "main": "server.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "nodemon server.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.17.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

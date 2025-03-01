@@ -9,8 +9,7 @@
 
 import express from 'express';
 import cors from 'cors';
-import pkg from '@anthropic-ai/sdk';
-const { Anthropic } = pkg;
+import anthropic from '@anthropic-ai/sdk';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -102,9 +101,19 @@ app.post('/proxy/claude', async (req, res) => {
         console.log("Making Claude API request...");
         
         // Create Anthropic client with the provided API key
-        const client = new Anthropic({
-            apiKey: apiKey
-        });
+        // Handle both ESM and CommonJS versions of the SDK
+        let client;
+        try {
+            // Try using the default export (ESM style)
+            client = new anthropic.default({
+                apiKey: apiKey
+            });
+        } catch (error) {
+            // Fallback to direct import (CommonJS style)
+            client = new anthropic({
+                apiKey: apiKey
+            });
+        }
 
         // Check if the model ID is a display name or actual model ID
         const modelId = req.body.model;

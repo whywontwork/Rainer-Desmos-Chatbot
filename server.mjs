@@ -9,7 +9,7 @@
 
 import express from 'express';
 import cors from 'cors';
-import anthropic from '@anthropic-ai/sdk';
+import * as sdk from '@anthropic-ai/sdk';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -100,69 +100,43 @@ app.post('/proxy/claude', async (req, res) => {
         
         console.log("Making Claude API request...");
         
-        // Create Anthropic client with the provided API key
-        // Handle both ESM and CommonJS versions of the SDK
-        let client;
+        // Create direct API fetch to Anthropic
         try {
-            // Try using the default export (ESM style)
-            client = new anthropic.default({
-                apiKey: apiKey
+            // Manually make the API call to Anthropic
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: req.body.model,
+                    max_tokens: req.body.max_tokens || 4096,
+                    messages: req.body.messages,
+                    system: req.body.system
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                return res.status(response.status).json(errorData);
+            }
+            
+            const message = await response.json();
+            console.log("Response received from Claude API");
+            
+            // Format the response
+            res.json({
+                id: message.id,
+                content: message.content,
+                role: message.role,
+                usage: message.usage
             });
         } catch (error) {
-            // Fallback to direct import (CommonJS style)
-            client = new anthropic({
-                apiKey: apiKey
-            });
+            console.error('Error making API request:', error);
+            throw error;
         }
-
-        // Check if the model ID is a display name or actual model ID
-        const modelId = req.body.model;
-        let actualModelId = modelId;
-        let modelConfig = Object.values(CLAUDE_MODELS).find(m => m.id === modelId);
-        
-        if (!modelConfig) {
-            // If not found as an ID, check if it's a display name and get the ID
-            for (const [displayName, config] of Object.entries(CLAUDE_MODELS)) {
-                if (displayName === modelId) {
-                    actualModelId = config.id;
-                    modelConfig = config;
-                    console.log(`Converting display name "${modelId}" to model ID: "${actualModelId}"`);
-                    break;
-                }
-            }
-        }
-        
-        // Get model's max token limit
-        const modelMaxTokens = modelConfig?.max_tokens || 4096;
-        
-        // If req.body.max_tokens is specified, use it but cap at model's limit
-        let maxTokens = req.body.max_tokens || modelMaxTokens;
-        
-        // Ensure we don't exceed the model's maximum token limit
-        if (maxTokens > modelMaxTokens) {
-            console.log(`Requested max_tokens (${maxTokens}) exceeds model limit (${modelMaxTokens}), capping at model limit`);
-            maxTokens = modelMaxTokens;
-        }
-
-        console.log(`Request includes ${req.body.messages.length} messages in conversation history`);
-        
-        // Create the message with the Anthropic API
-        const message = await client.messages.create({
-            model: actualModelId,
-            max_tokens: maxTokens,
-            messages: req.body.messages,
-            system: req.body.system
-        });
-
-        console.log("Response received from Claude API");
-        
-        // Format the response
-        res.json({
-            id: message.id,
-            content: message.content,
-            role: message.role,
-            usage: message.usage
-        });
     } catch (error) {
         console.error('Error details:', error);
         

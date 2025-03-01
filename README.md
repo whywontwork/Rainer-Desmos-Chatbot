@@ -25,7 +25,18 @@ The application is organized into the following modules:
 
 ## Installation
 
+### Direct Mode (No Server Required)
+
 1. Clone the repository
+2. Open `index.html` in your browser
+3. Enter your Anthropic API key in the settings
+4. Start chatting with Claude!
+
+The application uses corsproxy.io to bypass CORS restrictions when making direct API calls to Anthropic from the browser.
+
+### Server Mode (Optional)
+
+1. Clone the repository 
 2. Install dependencies:
    ```bash
    npm install
@@ -70,7 +81,7 @@ Edit settings through the Settings menu, including:
 
 ### Key Files
 
-- `server.mjs` - Express proxy server for Claude API communication
+- `server.mjs` - Express proxy server for Claude API communication (optional)
 - `index.html` - Main application HTML
 - `core/app.js` - Core application logic
 - `api/api.js` - API client and helpers
@@ -78,6 +89,12 @@ Edit settings through the Settings menu, including:
 - `desmos/equation-processor.js` - Equation detection and processing
 - `config/config.js` - Configuration management
 - `ui/styles.css` - Styling
+
+### CORS Handling
+
+- When running locally (localhost), the app automatically uses the local proxy server if available
+- In production environments, the app uses corsproxy.io to bypass CORS restrictions
+- The proper mode is automatically selected based on the hosting environment
 
 ## License
 
@@ -87,3 +104,4 @@ This project is provided for educational and personal use.
 
 - Anthropic for Claude API
 - Desmos for the graphing calculator API
+- corsproxy.io for CORS proxy service

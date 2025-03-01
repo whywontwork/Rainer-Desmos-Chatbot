@@ -14,7 +14,21 @@ class ClaudeAPI {
      */
     constructor(apiKey) {
         this.apiKey = apiKey;
-        this.baseUrl = 'http://localhost:3000/proxy';
+        
+        // Determine if we're in a development environment with a local server
+        const isDevEnv = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        // Use local proxy server if in development, otherwise use a CORS proxy for production
+        if (isDevEnv && window.location.port.includes('3000')) {
+            // Local development with server running
+            this.useLocalProxy = true;
+            this.baseUrl = 'http://localhost:3000/proxy/claude';
+        } else {
+            // Production environment - use a CORS proxy service
+            this.useLocalProxy = false;
+            this.corsProxyUrl = 'https://corsproxy.io/?';
+            this.baseUrl = 'https://api.anthropic.com/v1/messages';
+        }
     }
 
     /**
@@ -24,21 +38,58 @@ class ClaudeAPI {
      */
     async createMessage(params) {
         try {
-            const response = await fetch(`${this.baseUrl}/claude`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': this.apiKey
-                },
-                body: JSON.stringify(params)
-            });
+            // Format API request based on endpoint
+            const apiRequest = {
+                model: params.model,
+                max_tokens: params.max_tokens || 4096,
+                messages: params.messages,
+                system: params.system
+            };
+            
+            let response;
+            
+            if (this.useLocalProxy) {
+                // Use the local proxy server
+                response = await fetch(this.baseUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': this.apiKey
+                    },
+                    body: JSON.stringify(params)
+                });
+            } else {
+                // Use CORS proxy for production
+                const encodedUrl = encodeURIComponent(this.baseUrl);
+                response = await fetch(`${this.corsProxyUrl}${encodedUrl}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': this.apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify(apiRequest)
+                });
+            }
 
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(`API Error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
             }
 
-            return await response.json();
+            const apiResponse = await response.json();
+            
+            // Format the response to match our expected format
+            if (this.useLocalProxy) {
+                return apiResponse;
+            } else {
+                return {
+                    id: apiResponse.id,
+                    content: apiResponse.content,
+                    role: apiResponse.role,
+                    usage: apiResponse.usage
+                };
+            }
         } catch (error) {
             console.error('Error calling Claude API:', error);
             throw error;

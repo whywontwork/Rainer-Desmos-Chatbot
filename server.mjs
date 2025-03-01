@@ -9,8 +9,7 @@
 
 import express from 'express';
 import cors from 'cors';
-import pkg from '@anthropic-ai/sdk';
-const { Anthropic } = pkg;
+import { Anthropic } from '@anthropic-ai/sdk';
 import fs from 'fs';
 import path from 'path';
 
@@ -164,7 +163,7 @@ app.get('/health', (req, res) => {
 });
 
 // Start the server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 const HOST = process.env.HOST || '0.0.0.0';
 
 app.listen(PORT, HOST, () => {

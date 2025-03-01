@@ -13,6 +13,11 @@ import pkg from '@anthropic-ai/sdk';
 const { Anthropic } = pkg;
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get directory name properly in ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Read configuration
 const configPath = './config/config.js';
@@ -64,7 +69,15 @@ app.use(cors({
 }));
 
 app.use(express.json({limit: '200mb', extended: true}));
-app.use(express.static('.'));
+
+// Serve static files with correct MIME types
+app.use(express.static(__dirname, {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css');
+        }
+    }
+}));
 
 /**
  * Claude API proxy endpoint

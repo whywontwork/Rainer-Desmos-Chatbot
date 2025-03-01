@@ -26,7 +26,8 @@ class ClaudeAPI {
         } else {
             // Production environment - use a CORS proxy service
             this.useLocalProxy = false;
-            this.corsProxyUrl = 'https://corsproxy.io/?';
+            // Using a more reliable CORS proxy service
+            this.corsProxyUrl = 'https://cors-anywhere.herokuapp.com/';
             this.baseUrl = 'https://api.anthropic.com/v1/messages';
         }
     }
@@ -60,8 +61,8 @@ class ClaudeAPI {
                 });
             } else {
                 // Use CORS proxy for production
-                const encodedUrl = encodeURIComponent(this.baseUrl);
-                response = await fetch(`${this.corsProxyUrl}${encodedUrl}`, {
+                const proxyUrl = `${this.corsProxyUrl}${this.baseUrl}`;
+                response = await fetch(proxyUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

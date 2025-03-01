@@ -20,7 +20,7 @@ Web-based Rainer_Smart client with direct Anthropic API integration through a CO
 
 ### CORS Handling
 - Local development: Uses a local proxy server (localhost:3000) when running on localhost
-- Production deployment: Uses corsproxy.io as a CORS proxy to bypass browser security restrictions
+- Production deployment: Uses cors-anywhere.herokuapp.com as a CORS proxy to bypass browser security restrictions
 - The CORS proxy is automatically selected based on the hosting environment
 
 ## UI Functionality

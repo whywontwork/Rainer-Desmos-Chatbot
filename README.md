@@ -32,7 +32,7 @@ The application is organized into the following modules:
 3. Enter your Anthropic API key in the settings
 4. Start chatting with Claude!
 
-The application uses corsproxy.io to bypass CORS restrictions when making direct API calls to Anthropic from the browser.
+The application uses cors-anywhere.herokuapp.com to bypass CORS restrictions when making direct API calls to Anthropic from the browser.
 
 ### Server Mode (Optional)
 
@@ -93,7 +93,7 @@ Edit settings through the Settings menu, including:
 ### CORS Handling
 
 - When running locally (localhost), the app automatically uses the local proxy server if available
-- In production environments, the app uses corsproxy.io to bypass CORS restrictions
+- In production environments, the app uses cors-anywhere.herokuapp.com to bypass CORS restrictions
 - The proper mode is automatically selected based on the hosting environment
 
 ## License
@@ -104,4 +104,4 @@ This project is provided for educational and personal use.
 
 - Anthropic for Claude API
 - Desmos for the graphing calculator API
-- corsproxy.io for CORS proxy service
+- cors-anywhere.herokuapp.com for CORS proxy service

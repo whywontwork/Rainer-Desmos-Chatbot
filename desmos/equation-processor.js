@@ -1,8 +1,8 @@
 /**
- * Desmos Equation Processing Module
+ * Equation Processing and Desmos Integration Module
  * 
- * This module provides functionality for processing equations in Rainer_Smart's messages
- * and preparing them for display in the Desmos calculator.
+ * This module provides tools for processing equations and mathematical expressions
+ * from text and integrating with the Desmos graphing calculator.
  * 
  * @version 1.0.0
  */
@@ -64,7 +64,11 @@ class EquationProcessor {
                 // Skip if it looks like a full sentence or non-math content
                 if (latexContent.split(/\s+/).length > 10 || 
                     !/[=^+\-*\/0-9xy()]/.test(latexContent) ||
-                    /\b(and|is|the|find|with|when)\b/i.test(latexContent)) {
+                    /\b(and|is|the|find|with|when|using)\b/i.test(latexContent) ||
+                    /\bDesmos\b/i.test(latexContent) ||
+                    /\bplotting\b/i.test(latexContent) ||
+                    /\bcalculator\b/i.test(latexContent) ||
+                    /\bgraphing\b/i.test(latexContent)) {
                     continue;
                 }
                 
@@ -103,96 +107,86 @@ class EquationProcessor {
                     /[0-9]+x\s*[+\-]\s*(?:e\^x|[0-9]*x\^[0-9])/
                 ];
                 
-                // Try to match each pattern and extract just the mathematical part
-                let foundMatch = false;
                 for (const pattern of mathExpressionPatterns) {
-                    const mathMatch = latexContent.match(pattern);
-                    if (mathMatch) {
-                        // Extract just the matched mathematical expression
-                        let extractedMath = mathMatch[0];
+                    const exprMatch = latexContent.match(pattern);
+                    if (exprMatch) {
+                        let expression = exprMatch[1] ? exprMatch[1].trim() : exprMatch[0].trim();
                         
-                        // If match contains = sign, take everything after it if it's a standalone equation
-                        if (extractedMath.includes('=')) {
-                            const parts = extractedMath.split('=');
-                            if (parts.length === 2 && parts[1].trim()) {
-                                // This is a standalone equation, clean it up
-                                extractedMath = parts[0].trim() + '=' + parts[1].trim();
-                            }
-                        }
-                        
-                        // Clean up LaTeX formatting
-                        const cleanMath = extractedMath
+                        // Remove LaTeX formatting artifacts
+                        expression = expression
                             .replace(/\\text\{[^}]*\}/g, '')
                             .replace(/\\quad/g, '')
                             .replace(/\s+/g, '');
                         
-                        if (cleanMath && !equations.includes(cleanMath)) {
-                            equations.push(cleanMath);
-                            foundMatch = true;
-                            break;
+                        if (expression && !equations.includes(`y=${expression}`)) {
+                            equations.push(`y=${expression}`);
                         }
-                    }
-                }
-                
-                // If none of the specific patterns matched but content looks mathematical
-                // Try a final check for a standalone mathematical expression
-                if (!foundMatch && 
-                    !/\b(looks|like|is|are|be|can|will|would|should|could|has|have|had)\b/i.test(latexContent) &&
-                    /[0-9x\^+\-*\/\(\)]/.test(latexContent)) {
-                    
-                    // Further filter to avoid sentences - only take expressions with mathematical symbols
-                    // that aren't embedded in explanatory text
-                    const simpleMathPattern = /([0-9x]+(?:[+\-*\/\^][0-9x\^{}()\+\-\*\/\.]+)+)/;
-                    const simpleMatch = latexContent.match(simpleMathPattern);
-                    
-                    if (simpleMatch) {
-                        const cleanMath = simpleMatch[0]
-                            .replace(/\\text\{[^}]*\}/g, '')
-                            .replace(/\\quad/g, '')
-                            .replace(/\s+/g, '');
                         
-                        if (cleanMath && !equations.includes(cleanMath)) {
-                            // Add as y= equation if it doesn't already have a variable assignment
-                            if (!cleanMath.includes('=')) {
-                                equations.push(`y=${cleanMath}`);
-                            } else {
-                                equations.push(cleanMath);
-                            }
-                        }
+                        break; // Only use the first matching expression pattern
                     }
                 }
             }
         }
         
-        // Check for specific derivative request patterns
-        const derivativePattern = /derivative\s+of\s+([yx]\s*=\s*[0-9a-z^+\-*/(){}.\s]+)/gi;
-        let derivMatch;
-        while ((derivMatch = derivativePattern.exec(message)) !== null) {
-            const baseEquation = derivMatch[1].trim();
-            // If we find a derivative request, try to locate the derivative equation in the message
-            const derivExpr = this.findDerivativeExpression(message, baseEquation);
-            if (derivExpr && !equations.includes(derivExpr)) {
-                equations.push(derivExpr);
+        // Process LaTeX expressions within double $$ delimiters (these are usually displayed math)
+        const doubleDollarRegex = /\$\$([^$]+)\$\$/g;
+        
+        while ((match = doubleDollarRegex.exec(message)) !== null) {
+            if (match[1]) {
+                // Clean up the content
+                let mathContent = match[1].trim();
+                
+                // Skip if it looks like a full sentence or non-math content
+                if (mathContent.split(/\s+/).length > 10 || 
+                    !/[=^+\-*\/0-9xy()]/.test(mathContent) || 
+                    /\b(and|is|the|find|with|when|using)\b/i.test(mathContent)) {
+                    continue;
+                }
+                
+                // Look for an equation format: y = something or f(x) = something
+                const equationMatch = mathContent.match(/([yx]|f\(x\))\s*=\s*([^=\s]+)/i);
+                
+                if (equationMatch) {
+                    const equation = `${equationMatch[1]}=${equationMatch[2].trim()}`;
+                    // Clean up
+                    const cleanEquation = equation
+                        .replace(/\\text\{[^}]*\}/g, '')
+                        .replace(/\\quad/g, '')
+                        .replace(/\s+/g, '');
+                    
+                    if (cleanEquation && !equations.includes(cleanEquation)) {
+                        equations.push(cleanEquation);
+                    }
+                }
             }
         }
-    
+        
         return equations;
     }
     
     /**
-     * Find derivative expressions in a message
-     * @param {string} message - The message text
-     * @param {string} baseEquation - The base equation to find a derivative for
-     * @returns {string|null} - The derivative expression, or null if not found
+     * Extract a derivative equation from a message
+     * @param {string} message - The message to extract a derivative from
+     * @returns {string|null} - The extracted derivative or null if not found
      */
-    findDerivativeExpression(message, baseEquation) {
-        // This is a simplified approach - just look for equations after "derivative" or "derivative is"
+    extractDerivative(message) {
+        if (!message || typeof message !== 'string') {
+            return null;
+        }
+        
+        // Variety of patterns for derivative expressions in both LaTeX and plain text
         const derivPatterns = [
-            /derivative\s+is\s+([yx]\s*=\s*[0-9a-z^+\-*/(){}.\s]+)/i,
-            /derivative\s*:\s*([yx]\s*=\s*[0-9a-z^+\-*/(){}.\s]+)/i,
-            /derivative\s+of[^=]+=\s*([0-9a-z^+\-*/(){}.\s]+)/i,
-            /\frac{dy}{dx}\s*=\s*([0-9a-z^+\-*/(){}.\s]+)/i,
-            /\frac{d}{dx}[^=]*=\s*([0-9a-z^+\-*/(){}.\s]+)/i
+            /derivative is\s*[^\w]*([^\.]+)/i,
+            /function's derivative is\s*[^\w]*([^\.]+)/i,
+            /derivative of this function is\s*[^\w]*([^\.]+)/i,
+            /derivative(?:.*?)is\s*[^\w]*f'(?:.*?)=(.*?)(?:\.|$)/is,
+            /derivative:(.*?)$/im,
+            /derivative\s*[=:]\s*([^\.]+)/i,
+            /the\s+derivative\s+(?:.*?)\s+is\s+([^\.]+)/i,
+            /f'(?:\(x\))?\s*=\s*([^\.]+)/i,
+            /\$f'(?:\(x\))?\s*=\s*([^$]+)\$/i,
+            /\$\\frac{d}{dx}(?:.*?)=\s*([^$]+)\$/i,
+            /\$\\frac{dy}{dx}(?:.*?)=\s*([^$]+)\$/i
         ];
         
         for (const pattern of derivPatterns) {
@@ -214,6 +208,12 @@ class EquationProcessor {
         const points = [];
         
         if (!message || typeof message !== 'string') {
+            return points;
+        }
+        
+        // Don't extract points from messages that appear to be graphing main functions
+        // This prevents adding example points meant for explanation
+        if (message.match(/plot|graph|equation|function|y\s*=|f\s*\(x\)\s*=/i)) {
             return points;
         }
         
@@ -258,11 +258,33 @@ class EquationProcessor {
             if (directEquationMatch && directEquationMatch[1]) {
                 const exprText = directEquationMatch[1].trim();
                 // Filter out text that looks like a sentence
-                if (!/\band\b|\bis\b|\bthe\b|\bfind\b|\bwith\b/i.test(exprText) && 
+                if (!/\band\b|\bis\b|\bthe\b|\bfind\b|\bwith\b|\busing\b|\bdesmos\b|\bcalculator\b/i.test(exprText) && 
                     exprText.split(/\s+/).length < 5) {
                     directEquations.push(`y=${exprText}`);
                 }
             }
+        }
+        
+        // If this is a direct plot or equation request, only plot the main equation
+        // and ignore example points that might be included in the response
+        if (isPlotRequest && directEquations.length > 0) {
+            // We have a direct equation to plot, just use that
+            const mainEquation = directEquations[0];
+            
+            if (this.desmosIntegration) {
+                this.desmosIntegration.plotEquation(mainEquation);
+                
+                const result = {
+                    success: true,
+                    equations: [mainEquation],
+                    message: `Plotted equation: ${mainEquation}`
+                };
+                
+                result.toString = function() { return this.message; };
+                return result;
+            }
+            
+            return { success: false, message: "Desmos integration not available" };
         }
         
         // Check for LaTeX delimited equations and parse them carefully
@@ -280,6 +302,28 @@ class EquationProcessor {
             }
             return true;
         });
+        
+        // If we're responding to a specific user request like "graph y=2x+4",
+        // only graph the exact form requested and ignore examples/explanations
+        if (isPlotRequest) {
+            const userRequestedEquation = this.getUserRequestedEquation();
+            if (userRequestedEquation) {
+                if (this.desmosIntegration) {
+                    this.desmosIntegration.plotEquation(userRequestedEquation);
+                    
+                    const result = {
+                        success: true,
+                        equations: [userRequestedEquation],
+                        message: `Plotted requested equation: ${userRequestedEquation}`
+                    };
+                    
+                    result.toString = function() { return this.message; };
+                    return result;
+                }
+                
+                return { success: false, message: "Desmos integration not available" };
+            }
+        }
         
         // Check if there are potential equations in the message
         const hasEquations = equationPattern.test(message) || validLatexEquations.length > 0 || directEquations.length > 0;
@@ -320,22 +364,40 @@ class EquationProcessor {
         
         // Plot the equations
         if (this.desmosIntegration && filteredEquations.length > 0) {
-            this.desmosIntegration.plotEquations(filteredEquations);
-            
-            // Create a result object that behaves both as a boolean true and has properties
-            const result = Object.assign(
-                function() { return true; }, 
-                {
+            // If we have a direct equation request, only plot the first equation
+            // This prevents plotting examples and explanations
+            if (isPlotRequest && filteredEquations.length > 0) {
+                // Find the most likely main equation
+                const mainEq = filteredEquations[0];
+                this.desmosIntegration.plotEquation(mainEq);
+                
+                const result = {
                     success: true,
-                    equations: filteredEquations,
-                    message: `Plotted ${filteredEquations.length} equation${filteredEquations.length > 1 ? 's' : ''}: ${filteredEquations.join(', ')}`
-                }
-            );
-            
-            // Add a toString method that returns the message
-            result.toString = function() { return this.message; };
-            
-            return result;
+                    equations: [mainEq],
+                    message: `Plotted equation: ${mainEq}`
+                };
+                
+                result.toString = function() { return this.message; };
+                return result;
+            } else {
+                // Normal processing for other cases
+                this.desmosIntegration.plotEquations(filteredEquations);
+                
+                // Create a result object that behaves both as a boolean true and has properties
+                const result = Object.assign(
+                    function() { return true; }, 
+                    {
+                        success: true,
+                        equations: filteredEquations,
+                        message: `Plotted ${filteredEquations.length} equation${filteredEquations.length > 1 ? 's' : ''}: ${filteredEquations.join(', ')}`
+                    }
+                );
+                
+                // Add a toString method that returns the message
+                result.toString = function() { return this.message; };
+                
+                return result;
+            }
         }
 
         const result = { success: false, message: "No valid equations found to plot" };
@@ -358,279 +420,198 @@ class EquationProcessor {
             
             // Otherwise, look for equations with specific patterns
             // First, check for y= equations
-            const yEq = equations.find(eq => eq.startsWith('y='));
-            if (yEq) return yEq;
+            const yEquation = equations.find(eq => /^y\s*=/.test(eq));
+            if (yEquation) {
+                return yEquation;
+            }
             
-            // If no y= equation, return the first equation
+            // Then check for f(x)= equations
+            const fEquation = equations.find(eq => /^f\s*\(\s*x\s*\)\s*=/.test(eq));
+            if (fEquation) {
+                return fEquation;
+            }
+            
+            // Otherwise just take the first equation
             return equations[0];
         }
         
-        // If no equations were found, check if we have direct equations
-        if (directEquations.length > 0) {
-            return directEquations[0];
+        return null;
+    }
+    
+    /**
+     * Get the equation directly requested by the user
+     * @returns {string|null} - The requested equation or null
+     */
+    getUserRequestedEquation() {
+        const userMessages = Array.from(document.querySelectorAll('.user-message'))
+            .map(el => el.querySelector('.message-content')?.textContent || '');
+        
+        if (userMessages.length === 0) {
+            return null;
         }
         
+        // Get the most recent user message
+        const lastUserMessage = userMessages[userMessages.length - 1];
+        
+        // Look for direct plotting requests
+        const plotPatterns = [
+            /plot\s+(?:the\s+)?(?:equation\s+)?(y\s*=\s*[^,.]+)/i,
+            /graph\s+(?:the\s+)?(?:equation\s+)?(y\s*=\s*[^,.]+)/i,
+            /plot\s+(?:the\s+)?(?:equation\s+)?([a-z]\s*\([a-z]\)\s*=\s*[^,.]+)/i,
+            /graph\s+(?:the\s+)?(?:equation\s+)?([a-z]\s*\([a-z]\)\s*=\s*[^,.]+)/i,
+            /plot\s+(?:the\s+)?(?:function\s+)?([^,.]+)/i,
+            /graph\s+(?:the\s+)?(?:function\s+)?([^,.]+)/i
+        ];
+        
+        for (const pattern of plotPatterns) {
+            const match = lastUserMessage.match(pattern);
+            if (match && match[1]) {
+                const equation = match[1].trim();
+                // Check if it already has the y= part
+                if (equation.match(/^[a-z]\s*=|^[a-z]\s*\([a-z]\)\s*=/i)) {
+                    return equation;
+                } else {
+                    // If it's just an expression, add y=
+                    return `y=${equation}`;
+                }
+            }
+        }
         return null;
     }
 }
 
 /**
- * Handler for direct plot requests
+ * Handles direct plotting of equations based on button clicks or UI events
  */
 class DirectPlotHandler {
     /**
      * Create a new direct plot handler
-     * @param {DesmosIntegration} desmosIntegration - The Desmos integration instance
+     * @param {DesmosIntegration} desmosIntegration - The Desmos integration
      */
     constructor(desmosIntegration) {
         this.desmosIntegration = desmosIntegration;
-        this.setupHandlers();
-    }
-
-    /**
-     * Set up event handlers for direct plotting
-     */
-    setupHandlers() {
-        window.addPlotMessage = this.addPlotMessage;
-        window.plotDirectPoint = this.plotDirectPoint.bind(this);
-        
-        const textInput = document.getElementById('text-input');
-        const sendButton = document.getElementById('send-button');
-        
-        if (textInput && sendButton) {
-            sendButton.addEventListener('click', (e) => {
-                const userInput = textInput.value.trim();
-                const plotRequest = this.checkForDirectPlotRequest(userInput);
-                
-                if (plotRequest && this.handleDirectPlot(plotRequest)) {
-                    textInput.value = '';
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-            }, true);
-            
-            textInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    const userInput = textInput.value.trim();
-                    const plotRequest = this.checkForDirectPlotRequest(userInput);
-                    
-                    if (plotRequest && this.handleDirectPlot(plotRequest)) {
-                        textInput.value = '';
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
-                }
-            }, true);
-        }
+        this.setupDirectPlotButtons();
     }
     
     /**
-     * Check if a user input is a direct plot request
-     * @param {string} input - The user input text
-     * @returns {Object|null} - Plot request object or null
+     * Set up direct plot buttons in the UI
      */
-    checkForDirectPlotRequest(input) {
-        if (!input) return null;
+    setupDirectPlotButtons() {
+        // Add event listeners to any plot buttons
+        document.querySelectorAll('.plot-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                const equation = button.dataset.equation;
+                if (equation) {
+                    this.handleDirectPlot(equation);
+                }
+            });
+        });
         
-        // Check for direct equation input like "y=2x+5"
-        const equationMatch = input.match(/^([yx])\s*=\s*([0-9a-z^+\-*/(){}.\s]+)$/i);
-        if (equationMatch) {
-            return {
-                type: 'equation',
-                expression: `${equationMatch[1]}=${equationMatch[2].trim()}`,
-                direct: true
-            };
-        }
-        
-        // Check for direct plot commands like "plot y=2x+5"
-        const plotMatch = input.match(/^(plot|graph)\s+([yx])\s*=\s*([0-9a-z^+\-*/(){}.\s]+)$/i);
-        if (plotMatch) {
-            return {
-                type: 'equation',
-                expression: `${plotMatch[2]}=${plotMatch[3].trim()}`,
-                direct: true
-            };
-        }
-        
-        // Check for plot coordinates like "(3,4)"
-        const coordMatch = input.match(/^\(\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*\)$/);
-        if (coordMatch) {
-            return {
-                type: 'point',
-                x: parseFloat(coordMatch[1]),
-                y: parseFloat(coordMatch[3]),
-                direct: true
-            };
-        }
-        
-        return null;
+        // Set up a global handler for plot buttons that may be added dynamically
+        document.addEventListener('click', (e) => {
+            const target = e.target.closest('.plot-button');
+            if (target && !target.hasDirectPlotHandler) {
+                target.hasDirectPlotHandler = true;
+                
+                const equation = target.dataset.equation;
+                if (equation) {
+                    this.handleDirectPlot(equation);
+                }
+            }
+        });
     }
-
+    
     /**
      * Handle a direct plot request
-     * @param {Object} result - The plot request object
-     * @returns {boolean} - Whether the plot was successful
+     * @param {string} equation - The equation to plot
      */
-    handleDirectPlot(result) {
-        if (!result) return false;
-        
-        if (result.type === 'point') {
-            const point = `(${result.x},${result.y})`;
-            
-            if (result.direct) {
-                this.addPlotMessage(`Plotting coordinate ${point} on Desmos graph`);
-            } else {
-                this.addPlotMessage(`Point: ${point}`);
-            }
-            
-            window.lastPlottedPoint = point;
-            
-            if (result.direct) {
-                return this.plotDirectPoint(result.x, result.y);
-            }
-            
-            return this.desmosIntegration?.plotPoint(result.x, result.y) || false;
+    handleDirectPlot(equation) {
+        if (!equation || !this.desmosIntegration) {
+            return;
         }
         
-        if (result.type === 'equation') {
-            const latex = this.formatEquationForDesmos(result.expression);
-            this.addPlotMessage(latex);
-            return this.desmosIntegration?.plotEquations([latex]) || false;
+        // Show the Desmos calculator
+        const desmosContainer = document.getElementById('desmos-container');
+        if (desmosContainer) {
+            desmosContainer.classList.add('visible');
         }
         
-        return false;
-    }
-    
-    /**
-     * Format an equation for Desmos
-     * @param {string} equation - The equation to format
-     * @returns {string} - The formatted equation
-     */
-    formatEquationForDesmos(equation) {
-        if (!equation) return null;
+        // Plot the equation
+        this.desmosIntegration.plotEquation(equation);
         
-        // Clean up the equation
-        let latex = equation.trim()
-            .replace(/\s+/g, '')  // Remove spaces
-            .replace(/\^(?!\{)/g, '^{')  // Convert x^2 to x^{2}
-            .replace(/\^{(\d+)(?!})/g, '^{$1}');  // Add missing closing braces
-            
-        // If it has an equals sign, return as is
-        if (latex.includes('=')) {
-            return latex;
+        // Update UI if needed
+        if (typeof window.addPlotMessage === 'function') {
+            window.addPlotMessage(`Plotted equation: ${equation}`);
         }
-        
-        // Otherwise, assume it's a y= equation
-        return `y=${latex}`;
-    }
-    
-    /**
-     * Add a plot message to the chat
-     * @param {string} message - The message text
-     */
-    addPlotMessage(message) {
-        const chatArea = document.getElementById('chat-area');
-        if (!chatArea) return;
-        
-        const timestamp = new Date().toLocaleTimeString();
-        
-        const messageContainer = document.createElement('div');
-        messageContainer.className = 'message-container plot-message';
-        
-        const messageHeader = document.createElement('div');
-        messageHeader.className = 'message-header';
-        
-        const messageTimestamp = document.createElement('span');
-        messageTimestamp.className = 'message-timestamp';
-        messageTimestamp.textContent = `[${timestamp}]`;
-        messageHeader.appendChild(messageTimestamp);
-        
-        const messageSender = document.createElement('span');
-        messageSender.className = 'message-sender system-label';
-        messageSender.textContent = '📊 Graph: ';
-        messageHeader.appendChild(messageSender);
-        messageContainer.appendChild(messageHeader);
-        
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        messageContent.textContent = message;
-        messageContainer.appendChild(messageContent);
-        
-        chatArea.appendChild(messageContainer);
-        chatArea.scrollTop = chatArea.scrollHeight;
-    }
-    
-    /**
-     * Plot a point directly on the Desmos graph
-     * @param {number} x - The x coordinate
-     * @param {number} y - The y coordinate
-     * @returns {boolean} - Whether the plot was successful
-     */
-    plotDirectPoint(x, y) {
-        if (!this.desmosIntegration) return false;
-        
-        // Show calculator if not visible
-        if (typeof window.showCalculator === 'function') {
-            window.showCalculator();
-        }
-        
-        return this.desmosIntegration.plotPoint(x, y);
     }
 }
 
 /**
- * Handler for automatic equation plotting
+ * Automatically detects and plots equations in Rainer_Smart's messages
  */
 class AutoPlotHandler {
     /**
      * Create a new auto plot handler
-     * @param {EquationProcessor} equationProcessor - The equation processor
+     * @param {EquationProcessor} equationProcessor - The equation processor to use
      * @param {DesmosIntegration} desmosIntegration - The Desmos integration
      */
     constructor(equationProcessor, desmosIntegration) {
         this.equationProcessor = equationProcessor;
         this.desmosIntegration = desmosIntegration;
-        this.setupAutoPlotting();
+        this.setupAutoPlotObserver();
+        
+        // Mark that we've initialized to prevent multiple instances
+        window._autoPlotHandlerInitialized = true;
     }
-
+    
     /**
-     * Set up automatic plotting
+     * Set up an observer to detect new messages
      */
-    setupAutoPlotting() {
+    setupAutoPlotObserver() {
+        // Process existing messages first
+        this.autoPlotEquations();
+        
+        // Set up observer for new messages
         const observer = new MutationObserver((mutations) => {
-            mutations.forEach(mutation => {
-                if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach(node => {
-                        if (node.classList?.contains('message-container') &&
-                            node.querySelector('.message-sender.claude-label')) {
+            for (const mutation of mutations) {
+                const addedNodes = Array.from(mutation.addedNodes);
+                
+                for (const node of addedNodes) {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        // Check if this is a Rainer_Smart message
+                        const isClaudeMessage = node.classList?.contains('claude-message') ||
+                            node.querySelector?.('.claude-message, .message-sender.claude-label');
+                        
+                        if (isClaudeMessage) {
                             setTimeout(() => this.autoPlotEquations(node), 500);
                         }
-                    });
+                    }
                 }
-            });
+            }
         });
-
-        const chatContainer = document.getElementById('chat-area');
-        if (chatContainer) {
-            observer.observe(chatContainer, { childList: true });
-            setTimeout(() => this.autoPlotEquations(), 1000);
+        
+        const chatArea = document.getElementById('chat-area');
+        if (chatArea) {
+            observer.observe(chatArea, { childList: true, subtree: true });
         }
+        
+        // Store the observer so it can be disconnected if needed
+        this.observer = observer;
     }
-
+    
     /**
      * Get the previous user message
-     * @returns {string|null} - The previous user message or null
+     * @returns {string|null} - The previous user message content
      */
     getPreviousUserMessage() {
-        const messages = Array.from(document.querySelectorAll('.message-container'));
-        // Find the last user message before the current Claude message
-        for (let i = messages.length - 1; i >= 0; i--) {
-            if (messages[i].querySelector('.message-sender.user-label')) {
-                const content = messages[i].querySelector('.message-content');
-                return content?.textContent || '';
-            }
+        const userMessages = Array.from(document.querySelectorAll('.user-message .message-content'));
+        if (userMessages.length === 0) {
+            return null;
         }
-        return null;
+        
+        return userMessages[userMessages.length - 1].textContent;
     }
 
     /**

@@ -20,7 +20,7 @@ class ClaudeAPI {
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         
         // Get base URL for the proxy
-        const port = isLocalhost ? ':10000' : '';
+        const port = isLocalhost ? ':3000' : '';
         const protocol = window.location.protocol;
         const hostname = window.location.hostname;
         

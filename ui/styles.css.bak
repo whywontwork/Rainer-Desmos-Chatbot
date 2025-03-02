@@ -1,0 +1,805 @@
+/**
+ * Master CSS file for Claude Assistant UI
+ * 
+ * This file contains all styles for the application, including:
+ * - Base layout and general styles
+ * - Chat interface
+ * - Desmos integration
+ * - Graph display
+ * - Code blocks and equation formatting
+ * - Responsive design
+ * 
+ * @version 1.0.0
+ */
+
+/* -------------------- */
+/* Variables and Resets */
+/* -------------------- */
+
+:root {
+    /* Theme colors - will be set by JS */
+    --bg-color: #F4ECD8;
+    --text-color: #5B4636;
+    --chat-bg-color: #F8F4E9;
+    --input-bg-color: #F4ECD8;
+    --button-bg-color: #E6D9BE;
+    --highlight-bg-color: #A67D5D;
+    --highlight-text-color: #FFFFFF;
+    
+    /* Fixed colors */
+    --border-color: #D1D1D1;
+    --code-bg: #2d2d2d;
+    --code-fg: #48633d;
+    --error-color: #e74c3c;
+    --success-color: #2ecc71;
+    --warning-color: #f39c12;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    
+    /* Layout */
+    --panel-width: 250px;
+    --sidebar-width: 300px;
+    --header-height: 50px;
+    --footer-height: 60px;
+    --calculator-width: 450px;
+    
+    /* Typography */
+    --base-font-size: 16px;
+    --small-font-size: 14px;
+    --large-font-size: 18px;
+    --code-font-size: 14px;
+    
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    
+    /* Borders and Radius */
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    
+    /* Animation */
+    --transition-fast: 0.2s;
+    --transition-medium: 0.3s;
+    --transition-slow: 0.5s;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
+    font-size: var(--base-font-size);
+    line-height: 1.5;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ------------- */
+/* Main Menu Bar */
+/* ------------- */
+
+.main-menu {
+    display: flex;
+    background-color: var(--button-bg-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 10px;
+    height: var(--header-height);
+    align-items: center;
+    z-index: 10;
+}
+
+.menu-group {
+    position: relative;
+}
+
+.menu-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: var(--small-font-size);
+    transition: background-color var(--transition-fast);
+}
+
+.menu-item:hover {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 200px;
+    background-color: var(--input-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    box-shadow: 0 2px 5px var(--shadow-color);
+    z-index: 100;
+    display: none;
+}
+
+.dropdown-menu.active,
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+}
+
+.status-bar {
+    margin-left: auto;
+    padding: 10px;
+    font-size: var(--small-font-size);
+    opacity: 0.8;
+}
+
+/* ----------------- */
+/* Main Chat Content */
+/* ----------------- */
+
+.content-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.chat-area {
+    flex: 1;
+    padding: var(--spacing-md);
+    overflow-y: auto;
+    background-color: var(--chat-bg-color);
+}
+
+.input-container {
+    border-top: 1px solid var(--border-color);
+    padding: var(--spacing-sm);
+    background-color: var(--input-bg-color);
+}
+
+.message-input-area {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.text-input {
+    flex: 1;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm);
+    resize: none;
+    background-color: var(--chat-bg-color);
+    color: var(--text-color);
+    min-height: 60px;
+}
+
+.send-button {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-md);
+    cursor: pointer;
+    align-self: flex-end;
+}
+
+.attachment-buttons {
+    display: flex;
+    justify-content: flex-start;
+    gap: var(--spacing-md);
+}
+
+.attachment-button {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    cursor: pointer;
+    font-size: var(--small-font-size);
+    transition: background-color var(--transition-fast);
+}
+
+.attachment-button:hover {
+    background-color: var(--button-bg-color);
+}
+
+.file-preview {
+    margin: var(--spacing-sm) 0;
+    padding: var(--spacing-sm);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--chat-bg-color);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.file-preview-item {
+    max-width: 200px;
+    text-align: center;
+}
+
+.file-preview-item img {
+    max-width: 100%;
+    max-height: 150px;
+    object-fit: contain;
+}
+
+.file-icon {
+    font-size: 24px;
+    margin-bottom: var(--spacing-xs);
+}
+
+.file-name {
+    font-size: var(--small-font-size);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: var(--spacing-xs);
+}
+
+.model-selector {
+    height: 30px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--input-bg-color);
+    color: var(--text-color);
+    margin-left: var(--spacing-md);
+    padding: 0 var(--spacing-sm);
+}
+
+.toggle-graph-button {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    cursor: pointer;
+    margin-left: var(--spacing-md);
+    transition: background-color var(--transition-fast);
+}
+
+.toggle-graph-button:hover {
+    background-color: var(--highlight-bg-color);
+    opacity: 0.9;
+}
+
+.toggle-graph-button.active {
+    background-color: var(--success-color);
+}
+
+/* ----------------- */
+/* System Prompt     */
+/* ----------------- */
+
+.system-toggle {
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    color: var(--highlight-bg-color);
+    font-size: var(--small-font-size);
+    font-weight: bold;
+    user-select: none;
+}
+
+.system-container {
+    height: 0;
+    overflow: hidden;
+    transition: height var(--transition-medium);
+}
+
+.system-container.expanded {
+    height: 150px;
+    margin-bottom: var(--spacing-md);
+}
+
+.system-input {
+    width: 100%;
+    height: 150px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm);
+    resize: none;
+    background-color: var(--chat-bg-color);
+    color: var(--text-color);
+}
+
+/* ------------------- */
+/* Message Formatting  */
+/* ------------------- */
+
+.message-container {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-md);
+    background-color: var(--bg-color);
+    box-shadow: 0 1px 3px var(--shadow-color);
+}
+
+.message-container.user-message {
+    background-color: rgba(166, 125, 93, 0.1);
+    margin-left: 20%;
+}
+
+.message-container.claude-message {
+    margin-right: 20%;
+}
+
+.message-container.system-message {
+    background-color: rgba(243, 156, 18, 0.1);
+    margin-left: 10%;
+    margin-right: 10%;
+}
+
+.message-header {
+    display: flex;
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--small-font-size);
+}
+
+.message-timestamp {
+    opacity: 0.7;
+    margin-right: var(--spacing-sm);
+}
+
+.message-sender {
+    font-weight: bold;
+}
+
+.user-label {
+    color: var(--highlight-bg-color);
+}
+
+.claude-label {
+    color: var(--text-color);
+}
+
+.system-label {
+    color: var(--warning-color);
+}
+
+.message-content {
+    line-height: 1.6;
+    font-size: var(--base-font-size);
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.message-content code {
+    font-family: monospace;
+    background-color: rgba(45, 45, 45, 0.05);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: var(--code-font-size);
+}
+
+.code-block {
+    margin: var(--spacing-md) 0;
+    border-radius: var(--border-radius-sm);
+    overflow: hidden;
+}
+
+.code-header {
+    background-color: #3a3a3a;
+    color: white;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--small-font-size);
+    font-family: monospace;
+}
+
+.code-block pre {
+    margin: 0;
+    padding: var(--spacing-sm);
+    overflow-x: auto;
+    background-color: var(--code-bg);
+}
+
+.code-block code {
+    font-family: monospace;
+    color: #48633d;
+    font-size: var(--code-font-size);
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+
+.math-block {
+    margin: var(--spacing-sm) 0;
+    padding: var(--spacing-sm);
+    overflow-x: auto;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: var(--border-radius-sm);
+    font-family: 'Times New Roman', serif;
+    font-style: italic;
+}
+
+.math-inline {
+    font-family: 'Times New Roman', serif;
+    font-style: italic;
+}
+
+.equation-block {
+    font-family: monospace;
+    background-color: rgba(255, 255, 255, 0.5);
+    padding: 2px 4px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+/* ---------------------- */
+/* Thinking Indicator     */
+/* ---------------------- */
+
+.thinking-indicator {
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    text-align: center;
+    color: var(--highlight-bg-color);
+    font-size: var(--small-font-size);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+}
+
+/* ---------------------- */
+/* Calculator Integration */
+/* ---------------------- */
+
+.calculator-container {
+    width: 0;
+    background-color: var(--bg-color);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    transition: width var(--transition-medium);
+    overflow: hidden;
+}
+
+.calculator-container.active {
+
+/* Add visible class for desmos integration */
+.calculator-container.visible {
+    width: var(--calculator-width);
+}
+    width: var(--calculator-width);
+}
+
+.calculator-toggle {
+    position: absolute;
+    top: 50%;
+    left: -15px;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 5;
+}
+
+.calculator-header {
+    padding: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.calculator-controls {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.calculator-button {
+    background-color: var(--button-bg-color);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    padding: 4px 8px;
+    font-size: var(--small-font-size);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.calculator-button:hover {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+}
+
+.desmos-calculator {
+    flex: 1;
+    min-height: 0;
+}
+
+/* Apply themes to Desmos */
+.dark-theme .dcg-expressions {
+    background-color: #2d2d2d;
+    color: #f0f0f0;
+}
+
+.dark-theme .dcg-grapher {
+    background-color: #1e1e1e;
+}
+
+.dark-theme .dcg-mq-editable-field {
+    background-color: #3a3a3a;
+    color: #f0f0f0;
+}
+
+/* ------------------------------- */
+/* Modal Dialogs and Settings UI   */
+/* ------------------------------- */
+
+.modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-dialog {
+    background-color: var(--chat-bg-color);
+    border-radius: var(--border-radius-md);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 500px;
+    max-width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-title {
+    padding: var(--spacing-md);
+    background-color: var(--button-bg-color);
+    color: var(--text-color);
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--text-color);
+}
+
+.modal-content {
+    padding: var(--spacing-md);
+    overflow-y: auto;
+}
+
+.modal-buttons {
+    padding: var(--spacing-md);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+}
+
+.modal-button {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--button-bg-color);
+    cursor: pointer;
+}
+
+.modal-button.primary {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+    border-color: var(--highlight-bg-color);
+}
+
+.settings-input {
+    width: 100%;
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--chat-bg-color);
+    color: var(--text-color);
+}
+
+.settings-textarea {
+    width: 100%;
+    height: 120px;
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--chat-bg-color);
+    color: var(--text-color);
+    resize: vertical;
+}
+
+.settings-slider {
+    width: 100%;
+    margin-bottom: var(--spacing-md);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: var(--spacing-sm);
+}
+
+.export-options {
+    margin-bottom: var(--spacing-md);
+}
+
+.about-dialog,
+.shortcuts-dialog {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.shortcuts-dialog table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.shortcuts-dialog th,
+.shortcuts-dialog td {
+    padding: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.shortcuts-dialog kbd {
+    background-color: var(--button-bg-color);
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+    font-family: monospace;
+}
+
+.graph-dialog-content {
+    margin: var(--spacing-md) 0;
+}
+
+.graph-dialog-textarea {
+    width: 100%;
+    height: 100px;
+    font-family: monospace;
+    font-size: var(--small-font-size);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    resize: vertical;
+}
+
+.graph-preview {
+    margin: var(--spacing-md) 0;
+}
+
+.export-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin: var(--spacing-sm);
+    background-color: var(--button-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+}
+
+.graph-reference {
+    background-color: rgba(166, 125, 93, 0.1);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.graph-reference:hover {
+    background-color: rgba(166, 125, 93, 0.2);
+}
+
+.plot-message {
+    background-color: rgba(46, 204, 113, 0.1) !important;
+    margin-left: 5% !important;
+    margin-right: 5% !important;
+}
+
+/* ------------------- */
+/* Responsive Design   */
+/* ------------------- */
+
+@media (max-width: 768px) {
+    .main-menu {
+        flex-wrap: wrap;
+        height: auto;
+        padding: var(--spacing-xs);
+    }
+    
+    .model-selector,
+    .toggle-graph-button {
+        margin: var(--spacing-xs);
+    }
+    
+    .message-container.user-message,
+    .message-container.claude-message {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    
+    .calculator-container.active {
+
+/* Add visible class for desmos integration */
+.calculator-container.visible {
+    width: var(--calculator-width);
+}
+        width: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 50;
+    }
+}
+
+@media (max-width: 480px) {
+    .attachment-buttons {
+        flex-wrap: wrap;
+    }
+    
+    .message-input-area {
+        flex-direction: column;
+    }
+    
+    .send-button {
+        align-self: stretch;
+    }
+}

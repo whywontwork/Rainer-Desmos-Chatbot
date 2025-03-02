@@ -135,7 +135,8 @@ body {
     display: none;
 }
 
-.dropdown-menu.active {
+.dropdown-menu.active,
+.dropdown-menu.show {
     display: block;
 }
 
@@ -170,7 +171,7 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    min-width: 0;
 }
 
 .chat-area {
@@ -180,22 +181,196 @@ body {
     background-color: var(--chat-bg-color);
 }
 
-.message-container {
-    margin-bottom: var(--spacing-lg);
+.input-container {
+    border-top: 1px solid var(--border-color);
+    padding: var(--spacing-sm);
+    background-color: var(--input-bg-color);
+}
+
+.message-input-area {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.text-input {
+    flex: 1;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm);
+    resize: none;
+    background-color: var(--chat-bg-color);
+    color: var(--text-color);
+    min-height: 60px;
+}
+
+.send-button {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-md);
+    cursor: pointer;
+    align-self: flex-end;
+}
+
+.attachment-buttons {
+    display: flex;
+    justify-content: flex-start;
+    gap: var(--spacing-md);
+}
+
+.attachment-button {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    cursor: pointer;
+    font-size: var(--small-font-size);
+    transition: background-color var(--transition-fast);
+}
+
+.attachment-button:hover {
+    background-color: var(--button-bg-color);
+}
+
+.file-preview {
+    margin: var(--spacing-sm) 0;
+    padding: var(--spacing-sm);
+    border: 1px dashed var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--chat-bg-color);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.file-preview-item {
+    max-width: 200px;
+    text-align: center;
+}
+
+.file-preview-item img {
     max-width: 100%;
-    word-wrap: break-word;
+    max-height: 150px;
+    object-fit: contain;
+}
+
+.file-icon {
+    font-size: 24px;
+    margin-bottom: var(--spacing-xs);
+}
+
+.file-name {
+    font-size: var(--small-font-size);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: var(--spacing-xs);
+}
+
+.model-selector {
+    height: 30px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--input-bg-color);
+    color: var(--text-color);
+    margin-left: var(--spacing-md);
+    padding: 0 var(--spacing-sm);
+}
+
+.toggle-graph-button {
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
+    border: none;
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    cursor: pointer;
+    margin-left: var(--spacing-md);
+    transition: background-color var(--transition-fast);
+}
+
+.toggle-graph-button:hover {
+    background-color: var(--highlight-bg-color);
+    opacity: 0.9;
+}
+
+.toggle-graph-button.active {
+    background-color: var(--success-color);
+}
+
+/* ----------------- */
+/* System Prompt     */
+/* ----------------- */
+
+.system-toggle {
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    color: var(--highlight-bg-color);
+    font-size: var(--small-font-size);
+    font-weight: bold;
+    user-select: none;
+}
+
+.system-container {
+    height: 0;
+    overflow: hidden;
+    transition: height var(--transition-medium);
+}
+
+.system-container.expanded {
+    height: 150px;
+    margin-bottom: var(--spacing-md);
+}
+
+.system-input {
+    width: 100%;
+    height: 150px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: var(--spacing-sm);
+    resize: none;
+    background-color: var(--chat-bg-color);
+    color: var(--text-color);
+}
+
+/* ------------------- */
+/* Message Formatting  */
+/* ------------------- */
+
+.message-container {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-md);
+    background-color: var(--bg-color);
+    box-shadow: 0 1px 3px var(--shadow-color);
+}
+
+.message-container.user-message {
+    background-color: rgba(166, 125, 93, 0.1);
+    margin-left: 20%;
+}
+
+.message-container.claude-message {
+    margin-right: 20%;
+}
+
+.message-container.system-message {
+    background-color: rgba(243, 156, 18, 0.1);
+    margin-left: 10%;
+    margin-right: 10%;
 }
 
 .message-header {
     display: flex;
-    align-items: center;
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--small-font-size);
 }
 
 .message-timestamp {
+    opacity: 0.7;
     margin-right: var(--spacing-sm);
-    opacity: 0.6;
-    font-size: var(--small-font-size);
 }
 
 .message-sender {
@@ -217,448 +392,188 @@ body {
 .message-content {
     line-height: 1.6;
     font-size: var(--base-font-size);
+    overflow-wrap: break-word;
     white-space: pre-wrap;
 }
 
-.message-content p {
-    margin-bottom: var(--spacing-md);
+.message-content code {
+    font-family: monospace;
+    background-color: rgba(45, 45, 45, 0.05);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: var(--code-font-size);
 }
-
-.message-content ul, .message-content ol {
-    margin-left: var(--spacing-lg);
-    margin-bottom: var(--spacing-md);
-}
-
-.message-content img {
-    max-width: 100%;
-    height: auto;
-    margin: var(--spacing-md) 0;
-}
-
-/* -------------------- */
-/* Input and Send Areas */
-/* -------------------- */
-
-.input-container {
-    display: flex;
-    flex-direction: column;
-    padding: var(--spacing-md);
-    background-color: var(--input-bg-color);
-    border-top: 1px solid var(--border-color);
-}
-
-.thinking-indicator {
-    padding: var(--spacing-sm);
-    font-style: italic;
-    color: var(--text-color);
-    opacity: 0.7;
-    text-align: center;
-}
-
-.message-input-area {
-    display: flex;
-    align-items: flex-end;
-}
-
-.text-input {
-    flex: 1;
-    min-height: 40px;
-    max-height: 150px;
-    padding: var(--spacing-sm);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    resize: none;
-    overflow-y: auto;
-    background-color: var(--chat-bg-color);
-    color: var(--text-color);
-    font-size: var(--base-font-size);
-}
-
-.text-input:focus {
-    outline: none;
-    border-color: var(--highlight-bg-color);
-}
-
-.send-button {
-    margin-left: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border: none;
-    border-radius: var(--border-radius-sm);
-    background-color: var(--highlight-bg-color);
-    color: var(--highlight-text-color);
-    cursor: pointer;
-    font-size: var(--base-font-size);
-    transition: background-color var(--transition-fast);
-}
-
-.send-button:hover {
-    background-color: var(--highlight-bg-color);
-    opacity: 0.9;
-}
-
-.attachment-buttons {
-    display: flex;
-    margin-top: var(--spacing-sm);
-}
-
-.attachment-button {
-    margin-right: var(--spacing-sm);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    background-color: transparent;
-    color: var(--text-color);
-    cursor: pointer;
-    font-size: var(--small-font-size);
-    display: flex;
-    align-items: center;
-}
-
-.attachment-button:hover {
-    background-color: var(--button-bg-color);
-}
-
-.attachment-button-icon {
-    margin-right: var(--spacing-xs);
-}
-
-.file-preview {
-    margin-top: var(--spacing-md);
-    padding: var(--spacing-sm);
-    background-color: var(--chat-bg-color);
-    border-radius: var(--border-radius-sm);
-    display: flex;
-    flex-wrap: wrap;
-}
-
-.file-preview-item {
-    margin: var(--spacing-xs);
-    position: relative;
-}
-
-.file-preview-item img {
-    max-width: 100px;
-    max-height: 100px;
-    border-radius: var(--border-radius-sm);
-}
-
-.file-preview-remove {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    width: 20px;
-    height: 20px;
-    background-color: var(--error-color);
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-}
-
-/* ------------------- */
-/* Code Block Styling */
-/* ------------------- */
 
 .code-block {
     margin: var(--spacing-md) 0;
-    background-color: var(--code-bg);
-    border-radius: var(--border-radius-md);
+    border-radius: var(--border-radius-sm);
     overflow: hidden;
 }
 
 .code-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background-color: #f8f9fa;
-}
-
-.code-language {
-    font-family: monospace;
-    font-size: var(--small-font-size);
-    color: rgba(0, 0, 0, 0.7);
-}
-
-.code-copy-button {
-    font-size: var(--small-font-size);
-    background-color: transparent;
-    border: none;
-    color: rgba(0, 0, 0, 0.7);
-    cursor: pointer;
+    background-color: #3a3a3a;
+    color: white;
     padding: var(--spacing-xs) var(--spacing-sm);
-}
-
-.code-copy-button:hover {
-    color: var(--highlight-text-color);
+    font-size: var(--small-font-size);
+    font-family: monospace;
 }
 
 .code-block pre {
     margin: 0;
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm);
     overflow-x: auto;
+    background-color: var(--code-bg);
 }
 
 .code-block code {
-    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-family: monospace;
+    color: #48633d;
     font-size: var(--code-font-size);
-    color: var(--code-fg);
-}
-
-/* Inline code */
-.message-content code:not(.code-block code) {
-    background-color: rgba(0, 0, 0, 0.05);
-    padding: 2px 4px;
-    border-radius: var(--border-radius-sm);
-    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-    font-size: 0.9em;
-}
-
-/* ------------------------ */
-/* Equation and Math Styling */
-/* ------------------------ */
-
-.equation-block {
-    font-family: "Times New Roman", Times, serif;
-    background-color: #000000;
-    border-radius: var(--border-radius-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    margin: var(--spacing-sm) 0;
-    border-left: 3px solid var(--highlight-bg-color);
-    display: inline-block;
-    font-style: italic;
-}
-
-.math-styled {
-    font-family: "Times New Roman", Times, serif;
-    font-size: 1.1em;
-    background-color: #f8f9fa;
-    border-radius: var(--border-radius-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    margin: var(--spacing-sm) 0;
-    border-left: 3px solid var(--highlight-bg-color);
-    display: inline-block;
-}
-
-.latex-math {
-    font-family: "Times New Roman", Times, serif;
-    font-style: italic;
-    font-size: 1.1em;
-}
-
-.math-block, .math-inline {
-    font-family: "Times New Roman", Times, serif;
-    font-style: italic;
-    background-color: #f8f9fa;
-    padding: 2px 4px;
-    border-radius: var(--border-radius-sm);
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
 }
 
 .math-block {
-    display: block;
-    margin: 1em 0;
-    padding: 10px;
-    border-left: 2px solid var(--highlight-bg-color);
-}
-
-/* ------------------------ */
-/* Markdown Formatting */
-/* ------------------------ */
-
-.message-content h2 {
-    font-size: 1.3em;
-    font-weight: bold;
-    margin: 1em 0 0.5em 0;
-    padding-bottom: 0.3em;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--highlight-bg-color);
-}
-
-.message-content strong {
-    font-weight: bold;
-    color: var(--highlight-bg-color);
-}
-
-/* ------------------- */
-/* Graph Styling */
-/* ------------------- */
-
-.graph-link-container {
-    margin-top: 8px;
-    padding: 8px;
-    background-color: #f8f9fa;
-    border-radius: var(--border-radius-md);
-    border: 1px solid #dee2e6;
-    max-width: 100%;
-    overflow: hidden;
-    word-break: break-word;
-}
-
-.graph-link-container code {
-    display: inline-block;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-
-.equations-preview {
-    margin-top: 4px;
-    padding-left: 8px;
-}
-
-
-.graph-button {
-    background-color: var(--highlight-bg-color);
-    color: var(--highlight-text-color);
-    border: none;
-    border-radius: var(--border-radius-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    cursor: pointer;
-    font-size: var(--small-font-size);
-}
-
-.graph-button:hover {
-    opacity: 0.9;
-}
-
-.graph-reference {
-    cursor: pointer;
+    margin: var(--spacing-sm) 0;
     padding: var(--spacing-sm);
-    background-color: #f8f9fa;
+    overflow-x: auto;
+    background-color: rgba(255, 255, 255, 0.5);
     border-radius: var(--border-radius-sm);
-    border-left: 3px solid var(--highlight-bg-color);
+    font-family: 'Times New Roman', serif;
+    font-style: italic;
 }
 
-.graph-reference:hover {
-    background-color: #f0f0f0;
+.math-inline {
+    font-family: 'Times New Roman', serif;
+    font-style: italic;
 }
 
-.graph-dialog-textarea {
-    width: 100%;
-    min-height: 100px;
-    padding: var(--spacing-sm);
-    margin-top: var(--spacing-sm);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
+.equation-block {
     font-family: monospace;
-    font-size: var(--small-font-size);
+    background-color: rgba(255, 255, 255, 0.5);
+    padding: 2px 4px;
+    border-radius: 3px;
+    display: inline-block;
 }
 
-/* ------------------------ */
-/* Desmos Calculator Styling */
-/* ------------------------ */
+/* ---------------------- */
+/* Thinking Indicator     */
+/* ---------------------- */
+
+.thinking-indicator {
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    text-align: center;
+    color: var(--highlight-bg-color);
+    font-size: var(--small-font-size);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+}
+
+/* ---------------------- */
+/* Calculator Integration */
+/* ---------------------- */
 
 .calculator-container {
-    position: fixed;
-    top: var(--header-height);
-    right: -450px; /* Start off-screen */
-    width: var(--calculator-width);
-    height: calc(100vh - var(--header-height));
-    background-color: #fff;
+    width: 0;
+    background-color: var(--bg-color);
     border-left: 1px solid var(--border-color);
-    z-index: 10;
     display: flex;
     flex-direction: column;
-    transition: right var(--transition-medium) ease-in-out;
+    transition: width var(--transition-medium);
     overflow: hidden;
 }
 
 .calculator-container.active {
-    right: 0;
+    width: var(--calculator-width);
 }
 
-.calculator-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-bottom: 1px solid var(--border-color);
-    background-color: var(--button-bg-color);
-}
-
-.calculator-title {
-    font-weight: bold;
-    font-size: var(--base-font-size);
-}
-
-.calculator-controls {
-    display: flex;
-}
-
-.calculator-button {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    margin-left: var(--spacing-xs);
-    border: none;
-    background-color: transparent;
-    cursor: pointer;
-    font-size: var(--small-font-size);
-}
-
-.calculator-button:hover {
-    color: var(--highlight-bg-color);
+/* Add visible class for desmos integration */
+.calculator-container.visible {
+    width: var(--calculator-width);
 }
 
 .calculator-toggle {
     position: absolute;
-    left: -30px;
     top: 50%;
+    left: -15px;
     transform: translateY(-50%);
     width: 30px;
-    height: 80px;
-    background-color: var(--button-bg-color);
-    border: 1px solid var(--border-color);
-    border-right: none;
-    border-radius: 5px 0 0 5px;
+    height: 30px;
+    background-color: var(--highlight-bg-color);
+    color: var(--highlight-text-color);
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 50%;
     cursor: pointer;
-    font-size: 20px;
+    z-index: 5;
 }
 
-.desmos-calculator {
-    flex: 1;
-    width: 100%;
-    height: 100%;
-}
-
-.toggle-graph-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.calculator-header {
     padding: var(--spacing-sm);
-    margin-right: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.calculator-controls {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.calculator-button {
     background-color: var(--button-bg-color);
     border: none;
     border-radius: var(--border-radius-sm);
+    padding: 4px 8px;
+    font-size: var(--small-font-size);
     cursor: pointer;
     transition: background-color var(--transition-fast);
 }
 
-.toggle-graph-button.active {
+.calculator-button:hover {
     background-color: var(--highlight-bg-color);
     color: var(--highlight-text-color);
 }
 
-.toggle-graph-button:hover {
-    background-color: var(--highlight-bg-color);
-    color: var(--highlight-text-color);
+.desmos-calculator {
+    flex: 1;
+    min-height: 0;
 }
 
-/* ---------------- */
-/* Modal Styling */
-/* ---------------- */
+/* Apply themes to Desmos */
+.dark-theme .dcg-expressions {
+    background-color: #2d2d2d;
+    color: #f0f0f0;
+}
 
-.modal-overlay {
+.dark-theme .dcg-grapher {
+    background-color: #1e1e1e;
+}
+
+.dark-theme .dcg-mq-editable-field {
+    background-color: #3a3a3a;
+    color: #f0f0f0;
+}
+
+/* ------------------------------- */
+/* Modal Dialogs and Settings UI   */
+/* ------------------------------- */
+
+.modal-container {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    right: 0;
+    bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
@@ -666,27 +581,26 @@ body {
     z-index: 1000;
 }
 
-.modal {
-    background-color: var(--bg-color);
+.modal-dialog {
+    background-color: var(--chat-bg-color);
     border-radius: var(--border-radius-md);
-    max-width: 90%;
-    width: 500px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 500px;
+    max-width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 
-.modal-header {
+.modal-title {
     padding: var(--spacing-md);
     background-color: var(--button-bg-color);
-    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+    font-weight: bold;
     display: flex;
     justify-content: space-between;
     align-items: center;
-}
-
-.modal-title {
-    font-weight: bold;
-    font-size: var(--large-font-size);
 }
 
 .modal-close {
@@ -699,155 +613,188 @@ body {
 
 .modal-content {
     padding: var(--spacing-md);
-    max-height: 70vh;
     overflow-y: auto;
 }
 
 .modal-buttons {
+    padding: var(--spacing-md);
     display: flex;
     justify-content: flex-end;
-    padding: var(--spacing-md);
+    gap: var(--spacing-md);
     border-top: 1px solid var(--border-color);
 }
 
 .modal-button {
     padding: var(--spacing-sm) var(--spacing-md);
-    margin-left: var(--spacing-sm);
-    border: none;
+    border: 1px solid var(--border-color);
     border-radius: var(--border-radius-sm);
+    background-color: var(--button-bg-color);
     cursor: pointer;
-    font-size: var(--base-font-size);
 }
 
-.modal-button-primary {
+.modal-button.primary {
     background-color: var(--highlight-bg-color);
     color: var(--highlight-text-color);
-}
-
-.modal-button-secondary {
-    background-color: var(--button-bg-color);
-    color: var(--text-color);
-}
-
-/* ---------------- */
-/* Settings Styling */
-/* ---------------- */
-
-.settings-section {
-    margin-bottom: var(--spacing-lg);
-}
-
-.settings-title {
-    font-size: var(--large-font-size);
-    margin-bottom: var(--spacing-md);
-    font-weight: bold;
-    color: var(--highlight-bg-color);
-}
-
-.settings-group {
-    margin-bottom: var(--spacing-md);
-}
-
-.settings-label {
-    display: block;
-    margin-bottom: var(--spacing-xs);
-    font-weight: bold;
+    border-color: var(--highlight-bg-color);
 }
 
 .settings-input {
     width: 100%;
     padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-sm);
     background-color: var(--chat-bg-color);
     color: var(--text-color);
-    font-size: var(--base-font-size);
 }
 
-.settings-select {
+.settings-textarea {
     width: 100%;
+    height: 120px;
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--chat-bg-color);
+    color: var(--text-color);
+    resize: vertical;
+}
+
+.settings-slider {
+    width: 100%;
+    margin-bottom: var(--spacing-md);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: var(--spacing-sm);
+}
+
+.export-options {
+    margin-bottom: var(--spacing-md);
+}
+
+.about-dialog,
+.shortcuts-dialog {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.shortcuts-dialog table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.shortcuts-dialog th,
+.shortcuts-dialog td {
+    padding: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.shortcuts-dialog kbd {
+    background-color: var(--button-bg-color);
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+    font-family: monospace;
+}
+
+.graph-dialog-content {
+    margin: var(--spacing-md) 0;
+}
+
+.graph-dialog-textarea {
+    width: 100%;
+    height: 100px;
+    font-family: monospace;
+    font-size: var(--small-font-size);
     padding: var(--spacing-sm);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-sm);
-    background-color: var(--chat-bg-color);
-    color: var(--text-color);
-    font-size: var(--base-font-size);
+    resize: vertical;
 }
 
-.settings-checkbox {
-    margin-right: var(--spacing-xs);
+.graph-preview {
+    margin: var(--spacing-md) 0;
 }
 
-/* ---------------- */
-/* Responsive Design */
-/* ---------------- */
-
-@media screen and (max-width: 768px) {
-    :root {
-        --calculator-width: 100%;
-    }
-
-    .calculator-container {
-        width: 100%;
-        right: -100%;
-    }
-
-    .chat-container {
-        width: 100%;
-    }
-
-    .menu-item {
-        padding: 8px 10px;
-        font-size: 14px;
-    }
-
-    .attachment-buttons {
-        flex-wrap: wrap;
-    }
-
-    .attachment-button {
-        margin-bottom: var(--spacing-xs);
-    }
-
-    .calculator-toggle {
-        left: -25px;
-        width: 25px;
-        height: 60px;
-        font-size: 16px;
-    }
+.export-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin: var(--spacing-sm);
+    background-color: var(--button-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
 }
 
-@media screen and (max-width: 480px) {
-    :root {
-        --base-font-size: 14px;
-        --small-font-size: 12px;
-        --large-font-size: 16px;
-        --code-font-size: 12px;
-    }
+.graph-reference {
+    background-color: rgba(166, 125, 93, 0.1);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
 
+.graph-reference:hover {
+    background-color: rgba(166, 125, 93, 0.2);
+}
+
+.plot-message {
+    background-color: rgba(46, 204, 113, 0.1) !important;
+    margin-left: 5% !important;
+    margin-right: 5% !important;
+}
+
+/* ------------------- */
+/* Responsive Design   */
+/* ------------------- */
+
+@media (max-width: 768px) {
     .main-menu {
         flex-wrap: wrap;
         height: auto;
+        padding: var(--spacing-xs);
     }
-
-    .menu-group {
-        flex: 1;
-        min-width: 80px;
+    
+    .model-selector,
+    .toggle-graph-button {
+        margin: var(--spacing-xs);
     }
-
-    .menu-item {
-        text-align: center;
-        padding: 8px 5px;
+    
+    .message-container.user-message,
+    .message-container.claude-message {
+        margin-left: 0;
+        margin-right: 0;
     }
-
-    .dropdown-menu {
-        min-width: 150px;
-    }
-
-    .status-bar {
+    
+    .calculator-container.active {
         width: 100%;
-        text-align: center;
-        order: 3;
-        padding: 5px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 50;
+    }
+}
+
+@media (max-width: 480px) {
+    .attachment-buttons {
+        flex-wrap: wrap;
+    }
+    
+    .message-input-area {
+        flex-direction: column;
+    }
+    
+    .send-button {
+        align-self: stretch;
     }
 }

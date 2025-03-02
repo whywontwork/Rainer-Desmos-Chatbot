@@ -1,7 +1,26 @@
-import { ClaudeAPI, ChatStorage, FileHandler, TextFormatter } from '../api/api.js';
+import { ClaudeAPI, ChatStorage, FileHandler, TextFormatter as ApiTextFormatter } from '../api/api.js';
 import { Config, ApiUsageTracker, CLAUDE_MODELS } from '../config/config.js';
 import { DesmosIntegration } from '../desmos/desmos-core.js';
 import { EquationProcessor, DirectPlotHandler, AutoPlotHandler } from '../desmos/equation-processor.js';
+
+// Use the robust TextFormatter from api.js instead of the simple one
+const TextFormatter = {
+    formatText: function(text) {
+        // Use the more robust formatter from api.js
+        try {
+            return ApiTextFormatter.formatMessageContent(text);
+        } catch (e) {
+            console.warn('Error using advanced text formatter, falling back to basic', e);
+            // Fallback to basic formatting
+            if (typeof text === 'object') {
+                return String(JSON.stringify(text));
+            }
+            const safeText = String(text || '');
+            return safeText.replace(/\n/g, '<br>');
+        }
+    }
+};
+
 
 class ClaudeChatbot {
     /**
@@ -95,21 +114,47 @@ class ClaudeChatbot {
         this.dropdownMenus = document.querySelectorAll('.dropdown-menu');
         
         // Set event listeners for message sending
-        this.sendButton.addEventListener('click', () => this.sendMessage());
-        this.textInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendMessage();
-            }
-        });
+        if (this.sendButton) {
+            this.sendButton.addEventListener('click', () => this.sendMessage());
+        }
+        if (this.textInput) {
+            this.textInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
+            });
+        }
         
         // Set event listeners for file handling
-        this.fileButton.addEventListener('click', () => this.fileInput.click());
-        this.fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
-        this.clearButton.addEventListener('click', () => this.clearChat());
+        if (this.fileButton) {
+            this.fileButton.addEventListener('click', () => this.fileInput.click());
+        }
+        if (this.fileInput) {
+            this.fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
+        }
+        
+        // Use event delegation for clear button to avoid duplicate listeners
+        if (this.clearButton) {
+            // Remove any existing listeners first
+            this.clearButton.replaceWith(this.clearButton.cloneNode(true));
+            // Get the fresh reference and add listener
+            this.clearButton = document.getElementById('clear-button');
+            if (this.clearButton) {
+                this.clearButton.addEventListener('click', () => this.clearChat());
+            }
+        }
         
         // Set event listeners for system prompt
-        this.systemToggle.addEventListener('click', () => this.toggleSystemPrompt());
+        if (this.systemToggle) {
+            // Remove any existing listeners first
+            this.systemToggle.replaceWith(this.systemToggle.cloneNode(true));
+            // Get the fresh reference and add listener
+            this.systemToggle = document.getElementById('system-toggle');
+            if (this.systemToggle) {
+                this.systemToggle.addEventListener('click', () => this.toggleSystemPrompt());
+            }
+        }
         
         // Initialize dropdown menus
         this.initializeDropdownMenus();
@@ -133,7 +178,7 @@ class ClaudeChatbot {
         if (modelSelector) {
             // Remove duplicate entries
             const optionValues = new Set();
-            Array.from(modelSelector.options).forEach(option => {
+            Array.from(modelSelector.options || []).forEach(option => {
                 if (optionValues.has(option.value)) {
                     modelSelector.removeChild(option);
                 } else {
@@ -143,26 +188,43 @@ class ClaudeChatbot {
         }
 
         // Setup menu item click events
-        this.menuItems.forEach(item => {
-            if (item.nextElementSibling && item.nextElementSibling.classList.contains('dropdown-menu')) {
-                // Use click to toggle dropdown visibility
-                item.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.toggleDropdown(item.nextElementSibling);
-                });
-                
-                // Handle clicks on dropdown items
-                const dropdownItems = item.nextElementSibling.querySelectorAll('.dropdown-item');
-                dropdownItems.forEach(dropdownItem => {
-                    dropdownItem.addEventListener('click', (e) => {
+        if (this.menuItems) {
+            this.menuItems.forEach(item => {
+                if (item.nextElementSibling && item.nextElementSibling.classList.contains('dropdown-menu')) {
+                    // Remove any existing listeners by cloning the element
+                    const newItem = item.cloneNode(true);
+                    item.parentNode.replaceChild(newItem, item);
+                    
+                    // Use click to toggle dropdown visibility
+                    newItem.addEventListener('click', (e) => {
+                        e.preventDefault();
                         e.stopPropagation();
-                        this.handleMenuItemClick(dropdownItem.id);
-                        this.closeAllDropdowns();
+                        // Get the dropdown again since we replaced the element
+                        const dropdown = newItem.nextElementSibling;
+                        if (dropdown) {
+                            this.toggleDropdown(dropdown);
+                        }
                     });
-                });
-            }
-        });
+                    
+                    // Handle clicks on dropdown items (need to get fresh references)
+                    const dropdown = newItem.nextElementSibling;
+                    if (dropdown) {
+                        const dropdownItems = dropdown.querySelectorAll('.dropdown-item');
+                        dropdownItems.forEach(dropdownItem => {
+                            // Clone to remove existing listeners
+                            const newDropdownItem = dropdownItem.cloneNode(true);
+                            dropdownItem.parentNode.replaceChild(newDropdownItem, dropdownItem);
+                            
+                            newDropdownItem.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                this.handleMenuItemClick(newDropdownItem.id);
+                                this.closeAllDropdowns();
+                            });
+                        });
+                    }
+                }
+            });
+        }
         
         // Close dropdowns when clicking outside
         document.addEventListener('click', (e) => {
@@ -170,18 +232,22 @@ class ClaudeChatbot {
             let isMenuClick = false;
             
             // Check menu items
-            this.menuItems.forEach(item => {
-                if (item.contains(e.target)) {
-                    isMenuClick = true;
-                }
-            });
+            if (this.menuItems) {
+                this.menuItems.forEach(item => {
+                    if (item.contains(e.target)) {
+                        isMenuClick = true;
+                    }
+                });
+            }
             
             // Check dropdown menus
-            this.dropdownMenus.forEach(dropdown => {
-                if (dropdown.contains(e.target)) {
-                    isMenuClick = true;
-                }
-            });
+            if (this.dropdownMenus) {
+                this.dropdownMenus.forEach(dropdown => {
+                    if (dropdown.contains(e.target)) {
+                        isMenuClick = true;
+                    }
+                });
+            }
             
             if (!isMenuClick) {
                 this.closeAllDropdowns();
@@ -202,47 +268,51 @@ class ClaudeChatbot {
                 this.clearChat();
                 break;
             case 'open-chat':
-                // Show file picker to load chat
-                this.showFilePicker();
-                break;
             case 'save-chat':
-                this.saveChat();
+                this.exportChat();
                 break;
             case 'export-chat':
                 this.exportChat();
                 break;
                 
             // Edit menu
-            case 'clear-chat':
-                this.clearChat();
-                break;
             case 'copy-last':
-                this.copyLastMessage();
+            case 'copy-last-response':
+                this.copyLastResponse();
                 break;
             case 'copy-all':
                 this.copyAllMessages();
                 break;
+            case 'clear-chat':
+                this.clearChat();
+                break;
                 
             // Settings menu
             case 'api-settings':
-                this.showSettings('api');
+                this.showAPISettings();
                 break;
             case 'theme-settings':
-                this.showSettings('theme');
+            case 'interface-settings':
+                this.showInterfaceSettings();
                 break;
             case 'chat-settings':
-                this.showSettings('chat');
+                this.showChatSettings();
                 break;
                 
             // Help menu
             case 'about':
-                this.showAboutDialog();
+                this.showAbout();
                 break;
             case 'keyboard-shortcuts':
                 this.showKeyboardShortcuts();
                 break;
             case 'documentation':
-                this.showDocumentation();
+                window.open('https://github.com/anthropics/claude-code');
+                break;
+                
+            // Theme toggle
+            case 'toggle-theme':
+                this.toggleTheme();
                 break;
                 
             default:
@@ -251,74 +321,161 @@ class ClaudeChatbot {
     }
     
     /**
-     * Initialize model selector dropdown
+     * Copy all messages to clipboard
      */
-    initializeModelSelector() {
-        const modelSelector = document.getElementById('model-selector');
-        if (modelSelector) {
-            // Clear existing options
-            modelSelector.innerHTML = '';
-            
-            // Add model options
-            for (const model in CLAUDE_MODELS) {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                if (model === this.config.DEFAULT_MODEL) {
-                    option.selected = true;
-                }
-                modelSelector.appendChild(option);
-            }
-            
-            modelSelector.addEventListener('change', (e) => {
-                this.currentModel = e.target.value;
-                const modelConfig = CLAUDE_MODELS[this.currentModel];
-                this.updateStatusBar(`Model changed to ${this.currentModel}`);
+    copyAllMessages() {
+        const allText = this.conversationHistory.map(msg => 
+            `[${msg.timestamp}] ${msg.sender}: ${msg.message}`
+        ).join('\n\n');
+        
+        navigator.clipboard.writeText(allText)
+            .then(() => {
+                this.updateStatusBar('All messages copied to clipboard');
+            })
+            .catch(err => {
+                console.error('Failed to copy text: ', err);
+                this.updateStatusBar('Failed to copy text: ' + err.message);
             });
-        }
     }
     
     /**
-     * Initialize theme selector
+     * Show chat settings
      */
-    initializeThemeSelector() {
-        const themeSelector = document.getElementById('theme-selector');
-        if (themeSelector) {
-            themeSelector.value = this.config.THEME;
-            themeSelector.addEventListener('change', (e) => {
-                this.config.THEME = e.target.value;
-                Config.applyTheme(this.config.THEME);
-                Config.save(this.config);
-                this.updateStatusBar(`Theme changed to ${this.config.THEME}`);
+    showChatSettings() {
+        this.showInterfaceSettings();
+    }
+    
+    /**
+     * Toggle dropdown menu visibility
+     * @param {Element} dropdown - The dropdown to toggle
+     */
+    toggleDropdown(dropdown) {
+        // Close all other dropdowns first
+        if (this.dropdownMenus) {
+            this.dropdownMenus.forEach(menu => {
+                if (menu !== dropdown) {
+                    menu.classList.remove('show');
+                }
             });
         }
         
-        // Apply initial font size
-        document.documentElement.style.setProperty('--base-font-size', `${this.config.FONT_SIZE}px`);
-    }
-    
-    /**
-     * Toggle dropdown menu
-     * @param {HTMLElement} dropdown - The dropdown element to toggle
-     */
-    toggleDropdown(dropdown) {
-        this.closeAllDropdowns();
-        dropdown.classList.toggle('active');
-        dropdown.style.display = dropdown.classList.contains('active') ? 'block' : 'none';
+        // Toggle the current dropdown
+        dropdown.classList.toggle('show');
     }
     
     /**
      * Close all dropdown menus
      */
     closeAllDropdowns() {
-        this.dropdownMenus.forEach(dropdown => {
-            dropdown.classList.remove('active');
-            dropdown.style.display = 'none';
-        });
+        if (this.dropdownMenus) {
+            this.dropdownMenus.forEach(dropdown => {
+                dropdown.classList.remove('show');
+            });
+        }
     }
     
     /**
-     * Initialize Desmos integration
+     * Initialize the model selector dropdown
+     */
+    initializeModelSelector() {
+        const modelSelector = document.getElementById('model-selector');
+        if (!modelSelector) return;
+        
+        // Clear existing options
+        modelSelector.innerHTML = '';
+        
+        // Add supported models - convert object to array of entries
+        Object.entries(CLAUDE_MODELS).forEach(([name, model]) => {
+            const option = document.createElement('option');
+            option.value = model.id; // Use model ID, not display name
+            option.textContent = name;
+            
+            // Check if this is the current model by ID
+            if (model.id === this.currentModel) {
+                option.selected = true;
+            }
+            
+            modelSelector.appendChild(option);
+        });
+        
+        // Set the initial current model to the selected model's ID if it's not already set
+        if (modelSelector.selectedOptions.length > 0) {
+            this.currentModel = modelSelector.value;
+        } else if (Object.values(CLAUDE_MODELS).length > 0) {
+            // Fallback to first model if none selected
+            const firstModel = Object.values(CLAUDE_MODELS)[0];
+            this.currentModel = firstModel.id;
+            // Select the first option
+            if (modelSelector.options.length > 0) {
+                modelSelector.options[0].selected = true;
+            }
+        }
+        
+        // Set change event
+        modelSelector.addEventListener('change', () => {
+            this.currentModel = modelSelector.value;
+            console.log("Model changed to:", this.currentModel);
+            this.updateStatusBar(`Model changed to ${modelSelector.selectedOptions[0]?.textContent || this.currentModel}`);
+        });
+        
+        console.log("Using model ID:", this.currentModel);
+    }
+    
+    /**
+     * Initialize the theme selector
+     */
+    initializeThemeSelector() {
+        const themeToggle = document.getElementById('theme-toggle');
+        if (!themeToggle) return;
+        
+        // Set initial icon based on current theme
+        themeToggle.textContent = this.config.THEME === 'dark' ? '☀️' : '🌙';
+        
+        // Set click event
+        themeToggle.addEventListener('click', () => this.toggleTheme());
+    }
+    
+    /**
+     * Toggle between light and dark themes
+     */
+    toggleTheme() {
+        const newTheme = this.config.THEME === 'dark' ? 'light' : 'dark';
+        this.config.THEME = newTheme;
+        Config.save(this.config);
+        Config.applyTheme(newTheme);
+        
+        // Update toggle icon
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+        }
+        
+        // Update Desmos theme if available
+        if (this.desmosIntegration && typeof this.desmosIntegration.applyTheme === 'function') {
+            this.desmosIntegration.applyTheme(newTheme);
+        }
+        
+        this.updateStatusBar(`Theme changed to ${newTheme}`);
+    }
+    
+    /**
+     * Toggle the system prompt input visibility
+     */
+    toggleSystemPrompt() {
+        this.systemExpanded = !this.systemExpanded;
+        
+        const systemContainer = document.getElementById('system-container');
+        if (systemContainer) {
+            systemContainer.classList.toggle('expanded', this.systemExpanded);
+        }
+        
+        if (this.systemExpanded && this.systemInput) {
+            this.systemInput.focus();
+        }
+    }
+    
+    /**
+     * Initialize Desmos graphing calculator integration
      */
     initializeDesmosIntegration() {
         // Check if the Desmos calculator element exists
@@ -329,27 +486,56 @@ class ClaudeChatbot {
         }
         
         try {
+            // Clear any existing global handlers to prevent duplicates
+            if (window._autoPlotHandlerInitialized) {
+                console.log('Clearing previous Desmos initialization');
+                if (this.observer) {
+                    this.observer.disconnect();
+                    this.observer = null;
+                }
+            }
+            
             // Initialize Desmos integration
             this.desmosIntegration = new DesmosIntegration(this);
             
-            // Set up equation processor
-            this.equationProcessor = new EquationProcessor(this.desmosIntegration);
+            // Wait for calculator to be properly initialized
+            setTimeout(() => {
+                // Set up equation processor
+                this.equationProcessor = new EquationProcessor(this.desmosIntegration);
+                
+                // Fix: Make sure desmosIntegration is set up correctly before creating handlers
+                if (!this.desmosIntegration || !this.desmosIntegration.calculator) {
+                    console.warn('Desmos calculator not properly initialized, retrying...');
+                    
+                    // Try reinitializing the integration
+                    this.desmosIntegration = new DesmosIntegration(this);
+                    
+                    if (!this.desmosIntegration.calculator) {
+                        console.error('Failed to initialize Desmos calculator after retry');
+                        return;
+                    }
+                }
+                
+                // Set up direct plot handler with clean event setup
+                if (window._directPlotHandler) {
+                    delete window._directPlotHandler;
+                }
+                this.directPlotHandler = new DirectPlotHandler(this.desmosIntegration);
+                window._directPlotHandler = this.directPlotHandler;
+                
+                // Set up auto plot handler (only one instance should exist)
+                if (window._autoPlotHandler) {
+                    delete window._autoPlotHandler;
+                }
+                this.autoPlotHandler = new AutoPlotHandler(this.equationProcessor, this.desmosIntegration);
+                window._autoPlotHandler = this.autoPlotHandler;
+                
+                // Make integration globally available
+                window.desmosIntegration = this.desmosIntegration;
+                
+                this.updateStatusBar('Desmos integration initialized');
+            }, 1000); // Wait for calculator to fully initialize
             
-            // Fix: Make sure desmosIntegration is set up correctly before creating handlers
-            if (!this.desmosIntegration || !this.desmosIntegration.calculator) {
-                throw new Error('Desmos calculator not properly initialized');
-            }
-            
-            // Set up direct plot handler
-            this.directPlotHandler = new DirectPlotHandler(this.desmosIntegration);
-            
-            // Set up auto plot handler
-            this.autoPlotHandler = new AutoPlotHandler(this.equationProcessor, this.desmosIntegration);
-            
-            // Make integration globally available
-            window.desmosIntegration = this.desmosIntegration;
-            
-            this.updateStatusBar('Desmos integration initialized');
         } catch (error) {
             console.error('Failed to initialize Desmos integration:', error);
             throw error; // Re-throw to allow the constructor to catch it
@@ -357,561 +543,50 @@ class ClaudeChatbot {
     }
     
     /**
-     * Get the current state of the graph for a message
-     * @returns {string|null} The graph state message or null if no graph
+     * Set up autosave functionality
      */
-    getCurrentGraphState() {
-        if (this.desmosIntegration) {
-            return this.desmosIntegration.getCurrentGraphAsMessage();
-        }
-        return null;
-    }
-    
-    /**
-     * Toggle the system prompt visibility
-     */
-    toggleSystemPrompt() {
-        this.systemExpanded = !this.systemExpanded;
-        const systemContainer = document.getElementById('system-container');
-        
-        if (this.systemExpanded) {
-            systemContainer.classList.remove('hidden');
-            this.systemToggle.textContent = '▼ System Prompt';
-        } else {
-            systemContainer.classList.add('hidden');
-            this.systemToggle.textContent = '► System Prompt';
-        }
-    }
-    
-    /**
-     * Detect ASCII art that might be graphs
-     * @param {string} text - The text to check for ASCII art
-     * @returns {boolean} - Whether ASCII art was detected
-     */
-    detectAsciiArt(text) {
-        // Patterns that often appear in ASCII art graphs
-        const asciiPatterns = [
-            // Axes and grid lines
-            /[+\-|\\\/\*]{10,}/,  // Repeated symbols like -------- or ||||||
-            /\|\s*[-=]+\s*>/,     // Axis with arrow: |---->
-            /[0-9]+\s*\|\s*[0-9]+/, // Numbered axis: 10 | 20
-            
-            // Box drawing characters
-            /[│┃┆┇┊┋╵╷┌┐└┘├┤┬┴┼╌╍═━]{3,}/,
-            
-            // ASCII chart patterns
-            /[\(\)\[\]\{\}][_\-\s]+[\(\)\[\]\{\}]/,
-            /\+[-+]+\+/,         // Grid pattern: +---+---+
-            
-            // Common ASCII plotting patterns
-            /\*\s+\*\s+\*/,       // Stars used for plotting
-            /[\.o\*+#@]\s+[\.o\*+#@]/, // Various plot symbols
-            
-            // ASCII function plotting
-            /y\s*\|\s*[\*\.o+#]/,  // y-axis with plot points
-        ];
-        
-        // Check each pattern
-        for (const pattern of asciiPatterns) {
-            if (pattern.test(text)) {
-                return true;
-            }
+    setupAutosave() {
+        // Clear any existing autosave interval
+        if (this.autosaveInterval) {
+            clearInterval(this.autosaveInterval);
         }
         
-        // Look for multiple lines with similar structures (common in ASCII art)
-        const lines = text.split('\n');
-        if (lines.length > 3) {
-            let similarStructureLines = 0;
-            
-            for (let i = 0; i < lines.length - 1; i++) {
-                // Compare consecutive lines for similar structure
-                if (lines[i].length > 5 && 
-                    lines[i+1].length > 5 && 
-                    Math.abs(lines[i].length - lines[i+1].length) < 3 &&
-                    /[+\-|\\\/\*\.o#]/.test(lines[i]) &&
-                    /[+\-|\\\/\*\.o#]/.test(lines[i+1])) {
-                    similarStructureLines++;
-                    
-                    // If we find enough similar lines, it's likely ASCII art
-                    if (similarStructureLines >= 2) {
-                        return true;
-                    }
-                }
+        // Set up new interval
+        this.autosaveInterval = setInterval(() => {
+            if (this.conversationHistory.length > 0) {
+                ChatStorage.autosaveChat(this.conversationHistory);
+                this.updateStatusBar('Chat autosaved');
             }
-        }
-        
-        return false;
+        }, this.config.AUTO_SAVE_INTERVAL * 1000);
     }
     
     /**
-     * Send a message to Rainer_Smart
+     * Update the status bar with a message
+     * @param {string} message - The message to display
      */
-    async sendMessage() {
-        const userInput = this.textInput.value.trim();
-        let systemPrompt = this.systemInput ? this.systemInput.value.trim() : '';
+    updateStatusBar(message) {
+        if (!this.statusBar) return;
         
-        // Always add instructions about avoiding ASCII art for graphs
-        const noAsciiArtInstruction = "IMPORTANT: When asked to plot, graph, or visualize mathematical functions or data, NEVER use ASCII art. Always use the integrated Desmos graphing calculator. The Desmos calculator can plot functions like y=x^2 or y=sin(x) or f(x)=e^x.";
+        const timestamp = new Date().toLocaleTimeString();
+        this.statusBar.textContent = `[${timestamp}] ${message}`;
         
-        // If there's already a system prompt, append to it; otherwise use as the prompt
-        systemPrompt = systemPrompt ? `${systemPrompt}\n\n${noAsciiArtInstruction}` : noAsciiArtInstruction;
-        
-        if (!userInput) return;
-        
-        // Reset input and attachments
-        this.textInput.value = '';
-        
-        // Add user message to chat
-        this.addMessageToChat('You', userInput);
-        
-        // If it's a "what's on the graph" query, provide current graph state directly
-        if (/what('s| is) on the graph|what equations? (are|is) (shown|displayed|plotted)/i.test(userInput)) {
-            const graphState = this.getCurrentGraphState();
-            if (graphState) {
-                this.addMessageToChat('Rainer_Smart', graphState, true);
-                return;
+        // Clear status after a delay
+        setTimeout(() => {
+            if (this.statusBar.textContent.includes(message)) {
+                this.statusBar.textContent = '';
             }
-        }
-        
-        // Show thinking indicator
-        this.setThinkingIndicator(true);
-        
-        try {
-            // Calculate window size
-            const contextWindow = CLAUDE_MODELS[this.currentModel]?.CONTEXT_WINDOW_SIZE || 
-                                this.config.CONTEXT_WINDOW_SIZE;
-            
-            // Prepare messages for API
-            const messageHistory = this.prepareMessageHistory(contextWindow);
-            
-            // Add the new user message
-            messageHistory.push({
-                role: 'user',
-                content: userInput
-            });
-            
-            // Process attached files if any
-            if (this.fileAttachments.length > 0 || this.imageAttachments.length > 0) {
-                // Get the last message which is the user message we just added
-                const lastMessage = messageHistory[messageHistory.length - 1];
-                
-                // Convert message content to an array if it's not already
-                if (typeof lastMessage.content === 'string') {
-                    lastMessage.content = [{ type: 'text', text: lastMessage.content }];
-                }
-                
-                // Add file content
-                for (const file of this.fileAttachments) {
-                    lastMessage.content.push({
-                        type: 'text',
-                        text: `File: ${file.name}\n\n${file.data}`
-                    });
-                }
-                
-                // Add image content
-                for (const image of this.imageAttachments) {
-                    lastMessage.content.push({
-                        type: 'image',
-                        source: {
-                            type: 'base64',
-                            media_type: image.mediaType,
-                            data: image.data
-                        }
-                    });
-                }
-            }
-            
-            // Prepare API request parameters
-            const params = {
-                model: CLAUDE_MODELS[this.currentModel]?.id || 'claude-3-7-sonnet-20250219',
-                messages: messageHistory,
-                max_tokens: this.config.MAX_TOKENS
-            };
-            
-            // Add system prompt if provided
-            if (systemPrompt) {
-                params.system = systemPrompt;
-            }
-            
-            // Send to API
-            const response = await this.client.createMessage(params);
-            
-            // Record API usage if enabled
-            if (this.config.SAVE_API_USAGE) {
-                this.apiUsageTracker.recordUsage(
-                    params.model,
-                    response.usage?.input_tokens || 0,
-                    response.usage?.output_tokens || 0
-                );
-            }
-            
-            // Process and add Rainer_Smart's response to chat
-            const claudeMessage = response.content[0].text;
-            const formattedMessage = TextFormatter.formatMessageContent(claudeMessage);
-            this.addMessageToChat('Rainer_Smart', formattedMessage, true);
-            
-            // Process equations if available without modifying the message content
-            if (this.desmosIntegration && this.equationProcessor) {
-                // Look for equations in the last message and plot them
-                setTimeout(() => {
-                    const lastMessageElement = this.chatArea.lastElementChild;
-                    if (lastMessageElement) {
-                        const messageContent = lastMessageElement.querySelector('.message-content');
-                        if (messageContent) {
-                            // Check if message contains ASCII art that might be a graph attempt
-                            const hasAsciiArt = this.detectAsciiArt(messageContent.textContent);
-                            const isGraphRequest = userInput.toLowerCase().match(/plot|graph|draw|show|visualize|create a graph/);
-                            
-                            // If it's a graph request and we found ASCII art, show a warning and ensure Desmos is visible
-                            if (isGraphRequest && hasAsciiArt) {
-                                // Force Desmos to be visible
-                                if (this.desmosIntegration && !this.desmosIntegration.isActive) {
-                                    this.desmosIntegration.toggleCalculator();
-                                }
-                                
-                                // Add a system message warning about ASCII art
-                                this.addMessageToChat('System', 'ASCII art detected in the response. Using Desmos for proper mathematical visualization instead.', true, 'warning');
-                            }
-                            
-                            // Process for equations regardless
-                            const result = this.equationProcessor.processMessageForEquations(messageContent.textContent);
-                            
-                            // Only update the status bar with the result
-                            if (result && typeof result === 'object' && result.success) {
-                                this.updateStatusBar(`Plotted ${result.equations.length} equation(s): ${result.equations.join(', ')}`);
-                            } 
-                            // If we have a graph request but no equations were found, and there's ASCII art,
-                            // add a message suggesting the user try again with a more specific request
-                            else if (isGraphRequest && hasAsciiArt && (!result || !result.success)) {
-                                this.addMessageToChat('System', 'No valid equations were found to plot in Desmos. Try asking for a specific equation, like "plot y=x²".', true, 'warning');
-                            }
-                        }
-                    }
-                }, 100);
-            }
-            
-            // Update conversation history
-            this.conversationHistory.push({
-                timestamp: new Date().toLocaleTimeString(),
-                sender: 'You',
-                message: userInput,
-                attachments: [...this.fileAttachments, ...this.imageAttachments]
-            });
-            
-            this.conversationHistory.push({
-                timestamp: new Date().toLocaleTimeString(),
-                sender: 'Rainer_Smart',
-                message: claudeMessage
-            });
-            
-            // Store API format messages for context
-            this.apiMessages.push({
-                role: 'user',
-                content: userInput
-            });
-            
-            this.apiMessages.push({
-                role: 'assistant',
-                content: claudeMessage
-            });
-            
-            // Reset attachments
-            this.clearAttachments();
-            
-            // Update last interaction time
-            this.lastInteractionTime = Date.now();
-            
-            // Update status
-            this.updateStatusBar('Message sent and response received');
-        } catch (error) {
-            console.error('Error sending message:', error);
-            this.addMessageToChat('System', `Error: ${error.message}`, true, 'error');
-            this.updateStatusBar('Error: ' + error.message);
-        } finally {
-            // Hide thinking indicator
-            this.setThinkingIndicator(false);
-        }
+        }, 5000);
     }
     
     /**
-     * Show file picker for loading chats
+     * Show a system message in the chat area
+     * @param {string} text - The message text
      */
-    showFilePicker() {
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.json';
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                this.loadChat(e.target.files[0]);
-            }
-        });
-        fileInput.click();
-    }
-    
-    /**
-     * Copy the last message to clipboard
-     */
-    copyLastMessage() {
-        if (this.conversationHistory.length > 0) {
-            const lastMessage = this.conversationHistory[this.conversationHistory.length - 1];
-            navigator.clipboard.writeText(lastMessage.message)
-                .then(() => this.updateStatusBar('Last message copied to clipboard'))
-                .catch(err => this.updateStatusBar('Failed to copy: ' + err.message));
-        } else {
-            this.updateStatusBar('No messages to copy');
-        }
-    }
-    
-    /**
-     * Copy all messages to clipboard
-     */
-    copyAllMessages() {
-        if (this.conversationHistory.length > 0) {
-            const text = this.conversationHistory.map(msg => 
-                `[${msg.timestamp}] ${msg.sender}: ${msg.message}`
-            ).join('\n\n');
-            
-            navigator.clipboard.writeText(text)
-                .then(() => this.updateStatusBar('All messages copied to clipboard'))
-                .catch(err => this.updateStatusBar('Failed to copy: ' + err.message));
-        } else {
-            this.updateStatusBar('No messages to copy');
-        }
-    }
-    
-    /**
-     * Export the chat to a file
-     */
-    exportChat() {
-        try {
-            const format = prompt('Export format (text, html, json):', 'text');
-            if (!format) return;
-            
-            const filename = prompt('Enter a filename:', 'chat_export_' + new Date().toISOString().slice(0,19).replace(/:/g,'-'));
-            if (!filename) return;
-            
-            let content = '';
-            let mimeType = '';
-            let extension = '';
-            
-            switch (format.toLowerCase()) {
-                case 'text':
-                    content = this.conversationHistory.map(msg => 
-                        `[${msg.timestamp}] ${msg.sender}: ${msg.message}`
-                    ).join('\n\n');
-                    mimeType = 'text/plain';
-                    extension = '.txt';
-                    break;
-                    
-                case 'html':
-                    content = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Chat Export</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .message { margin-bottom: 20px; padding: 10px; border-radius: 5px; }
-        .user-message { background-color: #f0f0f0; }
-        .claude-message { background-color: #e6f7ff; }
-        .timestamp { color: #666; font-size: 0.8em; }
-        .sender { font-weight: bold; }
-    </style>
-</head>
-<body>
-    <h1>Chat Export</h1>
-    ${this.conversationHistory.map(msg => `
-    <div class="message ${msg.sender === 'You' ? 'user-message' : 'claude-message'}">
-        <div class="timestamp">${msg.timestamp}</div>
-        <div class="sender">${msg.sender}</div>
-        <div class="content">${msg.message}</div>
-    </div>
-    `).join('')}
-</body>
-</html>`;
-                    mimeType = 'text/html';
-                    extension = '.html';
-                    break;
-                    
-                case 'json':
-                    content = JSON.stringify({
-                        id: this.sessionId,
-                        timestamp: new Date().toISOString(),
-                        model: this.currentModel,
-                        history: this.conversationHistory
-                    }, null, 2);
-                    mimeType = 'application/json';
-                    extension = '.json';
-                    break;
-                    
-                default:
-                    this.updateStatusBar('Unsupported format');
-                    return;
-            }
-            
-            const blob = new Blob([content], { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            
-            const link = document.createElement('a');
-            link.download = filename + extension;
-            link.href = url;
-            link.click();
-            
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            this.updateStatusBar(`Chat exported as ${filename}${extension}`);
-        } catch (error) {
-            console.error('Error exporting chat:', error);
-            this.updateStatusBar('Error exporting chat: ' + error.message);
-        }
-    }
-    
-    /**
-     * Show about dialog
-     */
-    showAboutDialog() {
-        const content = document.createElement('div');
-        content.innerHTML = `
-            <div class="about-dialog">
-                <h2>Rainer_Smart Chat Interface</h2>
-                <p>Version: 1.0.0</p>
-                <p>A web interface for Anthropic's Rainer_Smart AI assistant.</p>
-                <p>Built with: HTML, CSS, JavaScript, and the Claude API</p>
-                <p>&copy; 2025 Anthropic PBC</p>
-            </div>
-        `;
-        
-        this.showModal('About', content, [
-            {
-                text: 'Close',
-                primary: true
-            }
-        ]);
-    }
-    
-    /**
-     * Show keyboard shortcuts dialog
-     */
-    showKeyboardShortcuts() {
-        const content = document.createElement('div');
-        content.innerHTML = `
-            <div class="shortcuts-dialog">
-                <h2>Keyboard Shortcuts</h2>
-                <table class="shortcuts-table">
-                    <tr>
-                        <td>Enter</td>
-                        <td>Send message</td>
-                    </tr>
-                    <tr>
-                        <td>Shift + Enter</td>
-                        <td>Insert line break</td>
-                    </tr>
-                    <tr>
-                        <td>Ctrl + L</td>
-                        <td>Clear chat</td>
-                    </tr>
-                    <tr>
-                        <td>Ctrl + S</td>
-                        <td>Save chat</td>
-                    </tr>
-                    <tr>
-                        <td>Ctrl + O</td>
-                        <td>Open chat</td>
-                    </tr>
-                    <tr>
-                        <td>Ctrl + E</td>
-                        <td>Export chat</td>
-                    </tr>
-                </table>
-            </div>
-        `;
-        
-        this.showModal('Keyboard Shortcuts', content, [
-            {
-                text: 'Close',
-                primary: true
-            }
-        ]);
-    }
-    
-    /**
-     * Show documentation
-     */
-    showDocumentation() {
-        const content = document.createElement('div');
-        content.innerHTML = `
-            <div class="documentation-dialog">
-                <h2>Documentation</h2>
-                <h3>Getting Started</h3>
-                <p>This interface allows you to chat with Rainer_Smart, Anthropic's AI assistant. Just type your message in the input box and hit Enter or click the Send button.</p>
-                
-                <h3>Key Features</h3>
-                <ul>
-                    <li><strong>System Prompt</strong>: You can set a system prompt to guide Rainer_Smart's behavior.</li>
-                    <li><strong>File Attachments</strong>: Upload files to share them with Rainer_Smart.</li>
-                    <li><strong>Desmos Integration</strong>: Mathematical expressions are automatically plotted.</li>
-                    <li><strong>History Management</strong>: Save, load, and export your chat history.</li>
-                </ul>
-                
-                <h3>Model Selection</h3>
-                <p>You can choose between different Claude models using the dropdown selector.</p>
-                
-                <h3>Settings</h3>
-                <p>Configure API settings, appearance, and chat options in the Settings menu.</p>
-            </div>
-        `;
-        
-        this.showModal('Documentation', content, [
-            {
-                text: 'Close',
-                primary: true
-            }
-        ]);
-    }
-    
-    /**
-     * Prepare message history for API request
-     * @param {number} contextWindow - The context window size
-     * @returns {Array} - The prepared message history
-     */
-    prepareMessageHistory(contextWindow) {
-        if (this.apiMessages.length === 0) {
-            return [];
-        }
-        
-        const strategy = this.config.CONTEXT_STRATEGY || 'sliding';
-        
-        if (strategy === 'sliding') {
-            // Use the most recent N message pairs (user + assistant)
-            const windowSize = contextWindow || 5;
-            const windowPairs = Math.min(Math.floor(windowSize / 2), this.apiMessages.length / 2);
-            return this.apiMessages.slice(-windowPairs * 2);
-        } else if (strategy === 'summary') {
-            // Not implemented yet - future feature
-            return this.apiMessages;
-        } else {
-            // Default to full history up to limit
-            return this.apiMessages.slice(-contextWindow * 2);
-        }
-    }
-    
-    /**
-     * Add a message to the chat display
-     * @param {string} sender - The sender of the message
-     * @param {string} message - The message content
-     * @param {boolean} isHtml - Whether the message contains HTML
-     * @param {string} type - The message type (normal, error, etc.)
-     */
-    addMessageToChat(sender, message, isHtml = false, type = 'normal') {
+    showSystemMessage(text) {
         const timestamp = new Date().toLocaleTimeString();
         
         const messageContainer = document.createElement('div');
-        messageContainer.className = 'message-container';
-        if (type === 'error') {
-            messageContainer.classList.add('error-message');
-        }
-        if (type === 'warning') {
-            messageContainer.classList.add('warning-message');
-        }
+        messageContainer.className = 'message-container system-message';
         
         const messageHeader = document.createElement('div');
         messageHeader.className = 'message-header';
@@ -922,67 +597,315 @@ class ClaudeChatbot {
         messageHeader.appendChild(messageTimestamp);
         
         const messageSender = document.createElement('span');
-        messageSender.className = 'message-sender';
-        if (sender === 'Rainer_Smart') {
-            messageSender.classList.add('claude-label');
-            messageContainer.classList.add('claude-message');
-        } else if (sender === 'You') {
-            messageSender.classList.add('user-label');
-        } else {
-            messageSender.classList.add('system-label');
-        }
-        messageSender.textContent = `${sender}: `;
+        messageSender.className = 'message-sender system-label';
+        messageSender.textContent = 'System: ';
         messageHeader.appendChild(messageSender);
+        messageContainer.appendChild(messageHeader);
         
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        messageContent.textContent = text;
+        messageContainer.appendChild(messageContent);
+        
+        if (this.chatArea) {
+            this.chatArea.appendChild(messageContainer);
+            this.chatArea.scrollTop = this.chatArea.scrollHeight;
+        }
+        
+        // Add to conversation history
+        this.conversationHistory.push({
+            timestamp,
+            sender: 'System',
+            message: text,
+            type: 'system'
+        });
+    }
+    
+    /**
+     * Show a user message in the chat area
+     * @param {string} text - The message text
+     */
+    showUserMessage(text) {
+        const timestamp = new Date().toLocaleTimeString();
+        
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message-container user-message';
+        
+        const messageHeader = document.createElement('div');
+        messageHeader.className = 'message-header';
+        
+        const messageTimestamp = document.createElement('span');
+        messageTimestamp.className = 'message-timestamp';
+        messageTimestamp.textContent = `[${timestamp}]`;
+        messageHeader.appendChild(messageTimestamp);
+        
+        const messageSender = document.createElement('span');
+        messageSender.className = 'message-sender user-label';
+        messageSender.textContent = 'You: ';
+        messageHeader.appendChild(messageSender);
         messageContainer.appendChild(messageHeader);
         
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         
-        if (isHtml) {
-            messageContent.innerHTML = message;
-            
-            // Find and set up code blocks
-            setTimeout(() => {
-                const codeBlocks = messageContent.querySelectorAll('pre code');
-                codeBlocks.forEach(block => {
-                    // Add copy button for each code block if not already present
-                    const parentDiv = block.closest('.code-block');
-                    if (parentDiv && !parentDiv.querySelector('.code-copy-button')) {
-                        const header = parentDiv.querySelector('.code-header');
-                        if (header) {
-                            const copyButton = document.createElement('button');
-                            copyButton.className = 'code-copy-button';
-                            copyButton.textContent = 'Copy';
-                            copyButton.addEventListener('click', () => {
-                                navigator.clipboard.writeText(block.textContent)
-                                    .then(() => {
-                                        copyButton.textContent = 'Copied!';
-                                        setTimeout(() => {
-                                            copyButton.textContent = 'Copy';
-                                        }, 2000);
-                                    })
-                                    .catch(err => {
-                                        console.error('Failed to copy code:', err);
-                                    });
-                            });
-                            header.appendChild(copyButton);
-                        }
-                    }
-                    
-                    // Apply syntax highlighting if hljs is available
-                    if (window.hljs) {
-                        window.hljs.highlightElement(block);
-                    }
-                });
-            }, 0);
-        } else {
-            messageContent.textContent = message;
-        }
+        // Format the message text
+        const safeText = (typeof text === "string") ? text : String(text || "");
+        const formattedText = safeText.replace ? safeText.replace(/\n/g, "<br>") : safeText;
+        
+        messageContent.innerHTML = formattedText;
         
         messageContainer.appendChild(messageContent);
-        this.chatArea.appendChild(messageContainer);
-        this.chatArea.scrollTop = this.chatArea.scrollHeight;
+        if (this.chatArea) {
+            this.chatArea.appendChild(messageContainer);
+            this.chatArea.scrollTop = this.chatArea.scrollHeight;
+        }
+        
+        // Add to conversation history
+        this.conversationHistory.push({
+            timestamp,
+            sender: 'You',
+            message: text,
+            type: 'user'
+        });
+
+        // Check for direct equation plotting from user input
+        if (this.desmosIntegration && text && 
+            (text.match(/^\s*y\s*=.+$/) || 
+             text.match(/^\s*f\s*\(x\)\s*=.+$/) ||
+             text.match(/^\s*[a-zA-Z]+\s*=.+$/))) {
+            this.desmosIntegration.addEquation(text);
+            // Make Desmos calculator visible
+            const desmosContainer = document.getElementById('desmos-container'); if (desmosContainer) { desmosContainer.classList.add('visible'); };
+        }
+    }
+    
+    /**
+     * Show an assistant message in the chat area
+     * @param {string} text - The message text
+     */
+    showAssistantMessage(text) {
+        const timestamp = new Date().toLocaleTimeString();
+        
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message-container claude-message';
+        
+        const messageHeader = document.createElement('div');
+        messageHeader.className = 'message-header';
+        
+        const messageTimestamp = document.createElement('span');
+        messageTimestamp.className = 'message-timestamp';
+        messageTimestamp.textContent = `[${timestamp}]`;
+        messageHeader.appendChild(messageTimestamp);
+        
+        const messageSender = document.createElement('span');
+        messageSender.className = 'message-sender claude-label';
+        messageSender.textContent = 'Rainer_Smart: ';
+        messageHeader.appendChild(messageSender);
+        messageContainer.appendChild(messageHeader);
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        // Format the message text
+        const formattedText = TextFormatter.formatText(text);
+        messageContent.innerHTML = formattedText;
+        
+        messageContainer.appendChild(messageContent);
+        if (this.chatArea) {
+            this.chatArea.appendChild(messageContainer);
+            this.chatArea.scrollTop = this.chatArea.scrollHeight;
+        }
+        
+        // Add to conversation history
+        this.conversationHistory.push({
+            timestamp,
+            sender: 'Rainer_Smart',
+            message: text,
+            type: 'assistant'
+        });
+        
+        // Process for equation plotting if Desmos is enabled
+        if (this.equationProcessor && this.desmosIntegration) {
+            // We'll handle equations through the AutoPlotHandler now
+            // The text is available in the DOM
+        }
+    }
+    
+    /**
+     * Send a message to the API
+     */
+    async sendMessage() {
+        if (!this.textInput) return;
+        
+        const userInput = this.textInput.value.trim();
+        if (!userInput && this.fileAttachments.length === 0 && this.imageAttachments.length === 0) {
+            this.updateStatusBar('Please enter a message or attach a file');
+            return;
+        }
+        
+        // Check if API key is configured
+        if (!this.config.API_KEY) {
+            this.showAPISettings();
+            return;
+        }
+        
+        // Show user message in chat
+        if (userInput) {
+            this.showUserMessage(userInput);
+        } else {
+            this.showUserMessage('[File(s) attached]');
+        }
+        
+        // Show file attachments in chat if present
+        if (this.fileAttachments.length > 0 || this.imageAttachments.length > 0) {
+            const fileNames = [...this.fileAttachments.map(f => f.name), 
+                              ...this.imageAttachments.map((_, i) => `Image ${i+1}`)];
+            this.showSystemMessage(`Attached files: ${fileNames.join(', ')}`);
+        }
+        
+        // Clear input
+        this.textInput.value = '';
+        
+        // Clear attachments UI
+        if (this.filePreview) {
+            this.filePreview.innerHTML = '';
+            this.filePreview.classList.add('hidden');
+        }
+        if (this.fileInput) {
+            this.fileInput.value = '';
+        }
+        
+        // Update last interaction time
+        this.lastInteractionTime = Date.now();
+        
+        // Show thinking indicator
+        if (this.thinkingIndicator) {
+            this.thinkingIndicator.classList.add('active');
+        }
+        
+        try {
+            // Check for graph query commands
+            if (userInput && userInput.toLowerCase().match(/what'?s on the graph|show me the graph|what is on the graph|what did you plot|what equation|what function/)) {
+                if (this.desmosIntegration) {
+                    const graphDescription = this.desmosIntegration.getCurrentGraphAsMessage();
+                    if (graphDescription) {
+                        this.showSystemMessage(graphDescription);
+                        
+                        // Hide thinking indicator and return
+                        if (this.thinkingIndicator) {
+                            this.thinkingIndicator.classList.remove('active');
+                        }
+                        return;
+                    }
+                }
+            }
+            
+            // Get system prompt if expanded
+            const systemPrompt = this.systemExpanded && this.systemInput ? 
+                this.systemInput.value.trim() : this.config.SYSTEM_PROMPT;
+            
+            // Build API messages array
+            // Add current message to array
+            if (userInput) {
+                this.apiMessages.push({ role: 'user', content: userInput });
+            } else if (this.fileAttachments.length > 0 || this.imageAttachments.length > 0) {
+                this.apiMessages.push({ role: 'user', content: '[File(s) attached]' });
+            }
+            
+            // Log the model ID being used
+            console.log("Sending API request with model ID:", this.currentModel);
+            
+            // Prepare request to send to proxy server
+            const apiRequest = {
+                model: this.currentModel,
+                messages: this.apiMessages,
+                system: systemPrompt,
+                max_tokens: this.config.MAX_TOKENS,
+                temperature: this.config.TEMPERATURE
+            };
+            
+            // Make API request using proxy server
+            const response = await this.client.createMessage(apiRequest);
+            
+            // Add assistant response to API messages for context
+            this.apiMessages.push({ role: 'assistant', content: response.content });
+            
+            // Trim history if too long
+            while (this.apiMessages.length > 10 * 2) {
+                this.apiMessages.shift();
+            }
+            
+            // Show assistant message in chat
+            this.showAssistantMessage(response.content);
+            
+            // Check for equations in the response and plot them
+            if (this.desmosIntegration && this.equationProcessor) {
+                // Process for graph commands in user input or equations directly typed by user
+                if (userInput && (
+                    userInput.toLowerCase().match(/plot|graph|derivative/) || 
+                    userInput.match(/y\s*=|f\s*\(x\)\s*=|\\frac|\\sqrt|\\sin|\\cos|\\tan/) ||
+                    userInput.match(/^\s*[a-zA-Z]+\s*=.+$/) || // Simple equations like y=x
+                    userInput.match(/^\s*[a-zA-Z]+\s*\(.+\)\s*=.+$/) // Function definitions like f(x)=2x
+                )) {
+                    const result = this.equationProcessor.processMessageForEquations(response.content);
+                    if (result && result.success) {
+                        // Plotting will be handled by the AutoPlotHandler
+                    } else {
+                        // Try to plot the user input directly if it looks like an equation
+                        if (userInput.match(/^\s*[a-zA-Z]+\s*=.+$/) || userInput.match(/^\s*[a-zA-Z]+\s*\(.+\)\s*=.+$/)) {
+                            if (this.desmosIntegration.calculator) {
+                                this.desmosIntegration.plotEquation(userInput);
+                                this.showSystemMessage(`Plotted equation: ${userInput}`);
+                            }
+                        }
+                    }
+                }
+            }
+            
+        } catch (error) {
+            console.error('API request failed:', error);
+            this.showSystemMessage(`Error: ${error.message}`);
+        } finally {
+            // Clear file attachments
+            this.fileAttachments = [];
+            this.imageAttachments = [];
+            
+            // Hide thinking indicator
+            if (this.thinkingIndicator) {
+                this.thinkingIndicator.classList.remove('active');
+            }
+        }
+    }
+    
+    /**
+     * Clear the chat history
+     */
+    clearChat() {
+        // Ask for confirmation
+        if (this.conversationHistory.length > 0 && this.config.CONFIRM_CLEAR_CHAT) {
+            if (!confirm('Are you sure you want to clear the chat history?')) {
+                return;
+            }
+        }
+        
+        // Clear chat area
+        if (this.chatArea) {
+            this.chatArea.innerHTML = '';
+        }
+        
+        // Clear history
+        this.conversationHistory = [];
+        this.apiMessages = [];
+        
+        // Clear current chat file
+        this.currentChatFile = null;
+        
+        // Show welcome message
+        if (this.config.SHOW_WELCOME_MESSAGE) {
+            this.showSystemMessage('Chat history cleared. Ready for a new conversation.');
+        }
+        
+        this.updateStatusBar('Chat cleared');
     }
     
     /**
@@ -997,8 +920,10 @@ class ClaudeChatbot {
             const fileData = await FileHandler.readMultipleFiles(files);
             
             // Clear existing previews
-            this.filePreview.innerHTML = '';
-            this.filePreview.classList.remove('hidden');
+            if (this.filePreview) {
+                this.filePreview.innerHTML = '';
+                this.filePreview.classList.remove('hidden');
+            }
             
             // Reset attachments
             this.fileAttachments = [];
@@ -1015,61 +940,68 @@ class ClaudeChatbot {
                     img.src = `data:${file.mediaType};base64,${file.data}`;
                     previewItem.appendChild(img);
                     
-                    const removeButton = document.createElement('span');
-                    removeButton.className = 'file-preview-remove';
-                    removeButton.textContent = '×';
-                    removeButton.addEventListener('click', () => {
-                        this.removeAttachment(file);
-                        previewItem.remove();
-                        if (this.filePreview.children.length === 0) {
-                            this.filePreview.classList.add('hidden');
-                        }
-                    });
+                    const nameLabel = document.createElement('div');
+                    nameLabel.className = 'file-name';
+                    nameLabel.textContent = file.name;
+                    previewItem.appendChild(nameLabel);
                     
-                    previewItem.appendChild(removeButton);
-                    this.filePreview.appendChild(previewItem);
+                    if (this.filePreview) {
+                        this.filePreview.appendChild(previewItem);
+                    }
                     
                     // Add to image attachments
-                    this.imageAttachments.push(file);
+                    this.imageAttachments.push({
+                        type: file.mediaType,
+                        data: file.data
+                    });
                 } else {
-                    // Add text file preview
+                    // Add file preview
                     const previewItem = document.createElement('div');
                     previewItem.className = 'file-preview-item';
                     
                     const fileIcon = document.createElement('div');
                     fileIcon.className = 'file-icon';
                     fileIcon.textContent = '📄';
-                    
-                    const fileName = document.createElement('div');
-                    fileName.className = 'file-name';
-                    fileName.textContent = file.name;
-                    
                     previewItem.appendChild(fileIcon);
-                    previewItem.appendChild(fileName);
                     
-                    const removeButton = document.createElement('span');
-                    removeButton.className = 'file-preview-remove';
-                    removeButton.textContent = '×';
-                    removeButton.addEventListener('click', () => {
-                        this.removeAttachment(file);
-                        previewItem.remove();
-                        if (this.filePreview.children.length === 0) {
-                            this.filePreview.classList.add('hidden');
-                        }
-                    });
+                    const nameLabel = document.createElement('div');
+                    nameLabel.className = 'file-name';
+                    nameLabel.textContent = file.name;
+                    previewItem.appendChild(nameLabel);
                     
-                    previewItem.appendChild(removeButton);
-                    this.filePreview.appendChild(previewItem);
+                    if (this.filePreview) {
+                        this.filePreview.appendChild(previewItem);
+                    }
                     
                     // Add to file attachments
-                    this.fileAttachments.push(file);
+                    this.fileAttachments.push({
+                        name: file.name,
+                        content: file.data
+                    });
                 }
             }
             
-            // Reset file input
-            event.target.value = '';
+            // Add remove button
+            if (this.filePreview) {
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-attachments';
+                removeBtn.textContent = 'Clear Attachments';
+                removeBtn.addEventListener('click', () => {
+                    if (this.filePreview) {
+                        this.filePreview.innerHTML = '';
+                        this.filePreview.classList.add('hidden');
+                    }
+                    this.fileAttachments = [];
+                    this.imageAttachments = [];
+                    if (this.fileInput) {
+                        this.fileInput.value = '';
+                    }
+                });
+                
+                this.filePreview.appendChild(removeBtn);
+            }
             
-            this.updateStatusBar(`Attached ${fileData.length} file(s)`);
+            this.updateStatusBar(`${files.length} file(s) attached`);
         } catch (error) {
             console.error('Error processing files:', error);
             this.updateStatusBar('Error processing files: ' + error.message);
@@ -1077,582 +1009,492 @@ class ClaudeChatbot {
     }
     
     /**
-     * Remove an attachment
-     * @param {Object} file - The file to remove
+     * Copy the last assistant response to clipboard
      */
-    removeAttachment(file) {
-        if (file.type === 'image') {
-            this.imageAttachments = this.imageAttachments.filter(img => img.name !== file.name);
-        } else {
-            this.fileAttachments = this.fileAttachments.filter(f => f.name !== file.name);
+    copyLastResponse() {
+        // Find the last assistant message
+        const assistantMessages = Array.from(document.querySelectorAll('.claude-message'));
+        if (assistantMessages.length === 0) {
+            this.updateStatusBar('No assistant messages to copy');
+            return;
         }
-    }
-    
-    /**
-     * Clear all attachments
-     */
-    clearAttachments() {
-        this.fileAttachments = [];
-        this.imageAttachments = [];
-        this.filePreview.innerHTML = '';
-        this.filePreview.classList.add('hidden');
-    }
-    
-    /**
-     * Clear the chat
-     */
-    clearChat() {
-        if (confirm('Are you sure you want to clear the chat?')) {
-            this.chatArea.innerHTML = '';
-            this.conversationHistory = [];
-            this.apiMessages = [];
-            this.clearAttachments();
-            this.currentChatFile = null;
-            
-            this.updateStatusBar('Chat cleared');
-            
-            // Add a new session ID
-            this.sessionId = this.generateSessionId();
-            this.lastInteractionTime = Date.now();
-            
-            // Reset Desmos calculator if available
-            if (this.desmosIntegration && this.desmosIntegration.calculator) {
-                this.desmosIntegration.calculator.setBlank();
-            }
+        
+        const lastMessage = assistantMessages[assistantMessages.length - 1];
+        const messageContent = lastMessage.querySelector('.message-content');
+        
+        if (!messageContent) {
+            this.updateStatusBar('Could not find message content');
+            return;
         }
-    }
-    
-    /**
-     * Save the chat history
-     */
-    saveChat() {
-        try {
-            const filename = prompt('Enter a filename for this chat:', 'chat_' + new Date().toISOString().slice(0,19).replace(/:/g,'-'));
-            if (!filename) return;
-            
-            const chatData = {
-                id: this.sessionId,
-                timestamp: new Date().toISOString(),
-                model: this.currentModel,
-                history: this.conversationHistory
-            };
-            
-            ChatStorage.saveChatHistory(chatData, filename + '.json');
-            
-            // Add to recent chats
-            ChatStorage.addRecentChat({
-                id: this.sessionId,
-                name: filename,
-                timestamp: new Date().toISOString(),
-                model: this.currentModel,
-                preview: this.conversationHistory.length > 0 ? 
-                    this.conversationHistory[0].message.substring(0, 50) + '...' : 
-                    'Empty chat'
+        
+        // Get the text content
+        const textContent = messageContent.innerText;
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(textContent)
+            .then(() => {
+                this.updateStatusBar('Last response copied to clipboard');
+            })
+            .catch(err => {
+                console.error('Failed to copy text: ', err);
+                this.updateStatusBar('Failed to copy text: ' + err.message);
             });
-            
-            this.currentChatFile = filename;
-            this.updateStatusBar(`Chat saved as ${filename}.json`);
-        } catch (error) {
-            console.error('Error saving chat:', error);
-            this.updateStatusBar('Error saving chat: ' + error.message);
-        }
     }
     
     /**
-     * Load a chat history
-     * @param {File} file - The chat file to load
+     * Show About dialog
      */
-    async loadChat(file) {
-        try {
-            const chatData = await ChatStorage.loadChatHistory(file);
-            
-            // Confirm if current chat is not empty
-            if (this.conversationHistory.length > 0) {
-                if (!confirm('Loading a chat will replace your current conversation. Continue?')) {
-                    return;
-                }
+    showAbout() {
+        const content = `
+            <div class="about-dialog">
+                <h2>Rainer_Smart Assistant</h2>
+                <p>Version 1.0.0</p>
+                <p>A web-based interface for the Claude AI model.</p>
+                <p>Built with JavaScript, HTML, and CSS.</p>
+                <p>&copy; ${new Date().getFullYear()} Anthropic</p>
+                <p><a href="https://github.com/anthropics/claude-code" target="_blank">GitHub Repository</a></p>
+                <p>Claude is a trademark of Anthropic, PBC.</p>
+            </div>
+        `;
+        
+        this.showModal('About', content, [
+            {
+                text: 'Close'
             }
-            
-            // Clear current chat
-            this.chatArea.innerHTML = '';
-            this.conversationHistory = [];
-            this.apiMessages = [];
-            
-            // Set session info
-            this.sessionId = chatData.id || this.generateSessionId();
-            this.currentModel = chatData.model || this.currentModel;
-            this.currentChatFile = file.name.replace('.json', '');
-            
-            // Populate the chat
-            chatData.history.forEach(msg => {
-                if (msg.sender === 'You') {
-                    this.addMessageToChat('You', msg.message);
-                    
-                    // Add to API messages
-                    this.apiMessages.push({
-                        role: 'user',
-                        content: msg.message
-                    });
-                } else if (msg.sender === 'Rainer_Smart') {
-                    const formattedMessage = TextFormatter.formatMessageContent(msg.message);
-                    this.addMessageToChat('Rainer_Smart', formattedMessage, true);
-                    
-                    // Add to API messages
-                    this.apiMessages.push({
-                        role: 'assistant',
-                        content: msg.message
-                    });
-                }
-            });
-            
-            // Restore history
-            this.conversationHistory = chatData.history;
-            
-            // Add to recent chats
-            ChatStorage.addRecentChat({
-                id: this.sessionId,
-                name: this.currentChatFile,
-                timestamp: new Date().toISOString(),
-                model: this.currentModel,
-                preview: this.conversationHistory.length > 0 ? 
-                    this.conversationHistory[0].message.substring(0, 50) + '...' : 
-                    'Empty chat'
-            });
-            
-            this.updateStatusBar(`Chat "${this.currentChatFile}" loaded`);
-        } catch (error) {
-            console.error('Error loading chat:', error);
-            this.updateStatusBar('Error loading chat: ' + error.message);
-        }
+        ]);
     }
     
     /**
-     * Set up autosave functionality
+     * Show keyboard shortcuts dialog
      */
-    setupAutosave() {
-        const interval = this.config.AUTOSAVE_INTERVAL || 60000; // Default to 1 minute
+    showKeyboardShortcuts() {
+        const content = `
+            <div class="shortcuts-dialog">
+                <table>
+                    <tr>
+                        <th>Shortcut</th>
+                        <th>Action</th>
+                    </tr>
+                    <tr>
+                        <td><kbd>Enter</kbd></td>
+                        <td>Send message</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Shift</kbd> + <kbd>Enter</kbd></td>
+                        <td>New line in message</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Ctrl</kbd> + <kbd>L</kbd></td>
+                        <td>Clear chat</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
+                        <td>Save chat</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Ctrl</kbd> + <kbd>O</kbd></td>
+                        <td>Load chat</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Ctrl</kbd> + <kbd>C</kbd></td>
+                        <td>Copy selected text</td>
+                    </tr>
+                    <tr>
+                        <td><kbd>Esc</kbd></td>
+                        <td>Close modal dialogs</td>
+                    </tr>
+                </table>
+            </div>
+        `;
         
-        if (this.autosaveInterval) {
-            clearInterval(this.autosaveInterval);
-        }
-        
-        this.autosaveInterval = setInterval(() => {
-            if (this.conversationHistory.length > 0) {
-                // Only save if there have been changes
-                const lastSaveTime = localStorage.getItem('last_autosave_time');
-                if (!lastSaveTime || this.lastInteractionTime > parseInt(lastSaveTime)) {
-                    const filename = this.currentChatFile || 'autosave_' + this.sessionId;
-                    
-                    const chatData = {
-                        id: this.sessionId,
-                        timestamp: new Date().toISOString(),
-                        model: this.currentModel,
-                        history: this.conversationHistory
-                    };
-                    
-                    // Save to localStorage instead of file
-                    localStorage.setItem('autosave_chat', JSON.stringify(chatData));
-                    localStorage.setItem('last_autosave_time', Date.now().toString());
-                    
-                    this.updateStatusBar('Chat autosaved');
-                }
+        this.showModal('Keyboard Shortcuts', content, [
+            {
+                text: 'Close'
             }
-        }, interval);
+        ]);
     }
     
     /**
-     * Set the thinking indicator visibility
-     * @param {boolean} isThinking - Whether the assistant is thinking
+     * Export chat history as a file
      */
-    setThinkingIndicator(isThinking) {
-        if (this.thinkingIndicator) {
-            if (isThinking) {
-                this.thinkingIndicator.classList.remove('hidden');
-                this.thinkingIndicator.textContent = 'Rainer_Smart is thinking...';
-            } else {
-                this.thinkingIndicator.classList.add('hidden');
-            }
+    exportChat() {
+        if (this.conversationHistory.length === 0) {
+            this.updateStatusBar('No chat history to export');
+            return;
         }
-    }
-    
-    /**
-     * Update the status bar text
-     * @param {string} message - The status message
-     */
-    updateStatusBar(message) {
-        if (this.statusBar) {
-            this.statusBar.textContent = message;
-            
-            // Clear status after a few seconds
-            setTimeout(() => {
-                if (this.statusBar.textContent === message) {
-                    this.statusBar.textContent = 'Ready';
-                }
-            }, 5000);
-        }
-    }
-    
-    /**
-     * Show settings modal
-     * @param {string} tab - The tab to show (api, theme, chat)
-     */
-    showSettings(tab = 'api') {
-        // Create modal
-        const modalOverlay = document.createElement('div');
-        modalOverlay.className = 'modal-overlay';
         
-        const modal = document.createElement('div');
-        modal.className = 'modal';
+        const content = document.createElement('div');
         
-        const modalHeader = document.createElement('div');
-        modalHeader.className = 'modal-header';
+        // Export options
+        const optionsContainer = document.createElement('div');
+        optionsContainer.className = 'export-options';
         
-        const modalTitle = document.createElement('div');
-        modalTitle.className = 'modal-title';
-        modalTitle.textContent = 'Settings';
+        const formatLabel = document.createElement('label');
+        formatLabel.textContent = 'Export Format:';
+        optionsContainer.appendChild(formatLabel);
         
-        const modalClose = document.createElement('button');
-        modalClose.className = 'modal-close';
-        modalClose.textContent = '×';
-        modalClose.addEventListener('click', () => {
-            document.body.removeChild(modalOverlay);
-        });
+        const formatSelect = document.createElement('select');
+        formatSelect.className = 'settings-input';
         
-        modalHeader.appendChild(modalTitle);
-        modalHeader.appendChild(modalClose);
+        const formats = [
+            { id: 'json', name: 'JSON' },
+            { id: 'text', name: 'Plain Text' },
+            { id: 'markdown', name: 'Markdown' },
+            { id: 'html', name: 'HTML' }
+        ];
         
-        const modalContent = document.createElement('div');
-        modalContent.className = 'modal-content';
-        
-        // API section
-        const apiSection = document.createElement('div');
-        apiSection.className = 'settings-section';
-        apiSection.style.display = tab === 'api' ? 'block' : 'none';
-        
-        const apiTitle = document.createElement('div');
-        apiTitle.className = 'settings-title';
-        apiTitle.textContent = 'API Configuration';
-        
-        const apiKeyGroup = document.createElement('div');
-        apiKeyGroup.className = 'settings-group';
-        
-        const apiKeyLabel = document.createElement('label');
-        apiKeyLabel.className = 'settings-label';
-        apiKeyLabel.textContent = 'API Key';
-        
-        const apiKeyInput = document.createElement('input');
-        apiKeyInput.className = 'settings-input';
-        apiKeyInput.type = 'password';
-        apiKeyInput.value = this.config.API_KEY || '';
-        
-        apiKeyGroup.appendChild(apiKeyLabel);
-        apiKeyGroup.appendChild(apiKeyInput);
-        
-        apiSection.appendChild(apiTitle);
-        apiSection.appendChild(apiKeyGroup);
-        
-        // UI section
-        const uiSection = document.createElement('div');
-        uiSection.className = 'settings-section';
-        uiSection.style.display = tab === 'theme' ? 'block' : 'none';
-        
-        const uiTitle = document.createElement('div');
-        uiTitle.className = 'settings-title';
-        uiTitle.textContent = 'UI Settings';
-        
-        const themeGroup = document.createElement('div');
-        themeGroup.className = 'settings-group';
-        
-        const themeLabel = document.createElement('label');
-        themeLabel.className = 'settings-label';
-        themeLabel.textContent = 'Theme';
-        
-        const themeSelect = document.createElement('select');
-        themeSelect.className = 'settings-select';
-        
-        // Add theme options
-        const themes = ['light', 'dark', 'sepia', 'ocean', 'forest', 'lavender', 'nord', 'sunset', 'green_muted', 'cyberpunk'];
-        themes.forEach(theme => {
+        formats.forEach(format => {
             const option = document.createElement('option');
-            option.value = theme;
-            option.textContent = theme.charAt(0).toUpperCase() + theme.slice(1).replace('_', ' ');
-            if (theme === this.config.THEME) {
-                option.selected = true;
+            option.value = format.id;
+            option.textContent = format.name;
+            formatSelect.appendChild(option);
+        });
+        
+        optionsContainer.appendChild(formatSelect);
+        
+        // Filename input
+        const filenameLabel = document.createElement('label');
+        filenameLabel.textContent = 'Filename:';
+        optionsContainer.appendChild(filenameLabel);
+        
+        const filenameInput = document.createElement('input');
+        filenameInput.type = 'text';
+        filenameInput.className = 'settings-input';
+        filenameInput.value = `chat_export_${new Date().toISOString().split('T')[0]}`;
+        optionsContainer.appendChild(filenameInput);
+        
+        content.appendChild(optionsContainer);
+        
+        // Show the modal
+        this.showModal('Export Chat', content, [
+            {
+                text: 'Export',
+                primary: true,
+                callback: () => {
+                    const format = formatSelect.value;
+                    const filename = filenameInput.value.trim() || 'chat_export';
+                    
+                    switch (format) {
+                        case 'json':
+                            ChatStorage.saveChatHistory(this.conversationHistory, `${filename}.json`);
+                            break;
+                        case 'text':
+                            this.exportAsText(filename);
+                            break;
+                        case 'markdown':
+                            this.exportAsMarkdown(filename);
+                            break;
+                        case 'html':
+                            this.exportAsHTML(filename);
+                            break;
+                    }
+                    
+                    this.updateStatusBar(`Chat exported as ${format.toUpperCase()}`);
+                }
+            },
+            {
+                text: 'Cancel'
             }
-            themeSelect.appendChild(option);
-        });
+        ]);
+    }
+    
+    /**
+     * Export chat as plain text
+     * @param {string} filename - The filename to use
+     */
+    exportAsText(filename = 'chat_export') {
+        let text = '';
         
-        themeGroup.appendChild(themeLabel);
-        themeGroup.appendChild(themeSelect);
+        for (const message of this.conversationHistory) {
+            text += `[${message.timestamp}] ${message.sender}: ${message.message}\n\n`;
+        }
         
-        const fontSizeGroup = document.createElement('div');
-        fontSizeGroup.className = 'settings-group';
+        const blob = new Blob([text], { type: 'text/plain' });
+        this.downloadFile(blob, `${filename}.txt`);
+    }
+    
+    /**
+     * Export chat as Markdown
+     * @param {string} filename - The filename to use
+     */
+    exportAsMarkdown(filename = 'chat_export') {
+        let markdown = `# Chat Export (${new Date().toLocaleString()})\n\n`;
         
-        const fontSizeLabel = document.createElement('label');
-        fontSizeLabel.className = 'settings-label';
-        fontSizeLabel.textContent = 'Font Size';
+        for (const message of this.conversationHistory) {
+            markdown += `## ${message.sender} (${message.timestamp})\n\n`;
+            markdown += `${message.message}\n\n`;
+        }
         
-        const fontSizeInput = document.createElement('input');
-        fontSizeInput.className = 'settings-input';
-        fontSizeInput.type = 'number';
-        fontSizeInput.min = '10';
-        fontSizeInput.max = '24';
-        fontSizeInput.value = this.config.FONT_SIZE || '16';
+        const blob = new Blob([markdown], { type: 'text/markdown' });
+        this.downloadFile(blob, `${filename}.md`);
+    }
+    
+    /**
+     * Export chat as HTML
+     * @param {string} filename - The filename to use
+     */
+    exportAsHTML(filename = 'chat_export') {
+        let html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Export</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .message { margin-bottom: 20px; padding: 10px; border-radius: 5px; }
+        .user { background-color: #f0f0f0; }
+        .assistant { background-color: #e6f7ff; }
+        .system { background-color: #f0f0ff; font-style: italic; }
+        .header { font-weight: bold; margin-bottom: 5px; }
+        .timestamp { color: #666; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <h1>Chat Export (${new Date().toLocaleString()})</h1>
+`;
         
-        fontSizeGroup.appendChild(fontSizeLabel);
-        fontSizeGroup.appendChild(fontSizeInput);
-        
-        uiSection.appendChild(uiTitle);
-        uiSection.appendChild(themeGroup);
-        uiSection.appendChild(fontSizeGroup);
-        
-        // Chat settings section
-        const chatSection = document.createElement('div');
-        chatSection.className = 'settings-section';
-        chatSection.style.display = tab === 'chat' ? 'block' : 'none';
-        
-        const chatTitle = document.createElement('div');
-        chatTitle.className = 'settings-title';
-        chatTitle.textContent = 'Chat Settings';
-        
-        const autosaveGroup = document.createElement('div');
-        autosaveGroup.className = 'settings-group';
-        
-        const autosaveLabel = document.createElement('label');
-        autosaveLabel.className = 'settings-label';
-        autosaveLabel.textContent = 'Auto-save Chat';
-        
-        const autosaveCheckbox = document.createElement('input');
-        autosaveCheckbox.type = 'checkbox';
-        autosaveCheckbox.checked = this.config.AUTO_SAVE_CHAT || false;
-        
-        autosaveGroup.appendChild(autosaveLabel);
-        autosaveGroup.appendChild(autosaveCheckbox);
-        
-        chatSection.appendChild(chatTitle);
-        chatSection.appendChild(autosaveGroup);
-        
-        // Tab navigation
-        const tabsContainer = document.createElement('div');
-        tabsContainer.className = 'settings-tabs';
-        
-        const apiTab = document.createElement('div');
-        apiTab.className = 'settings-tab';
-        apiTab.classList.toggle('active', tab === 'api');
-        apiTab.textContent = 'API';
-        apiTab.addEventListener('click', () => {
-            apiSection.style.display = 'block';
-            uiSection.style.display = 'none';
-            chatSection.style.display = 'none';
-            apiTab.classList.add('active');
-            uiTab.classList.remove('active');
-            chatTab.classList.remove('active');
-        });
-        
-        const uiTab = document.createElement('div');
-        uiTab.className = 'settings-tab';
-        uiTab.classList.toggle('active', tab === 'theme');
-        uiTab.textContent = 'Appearance';
-        uiTab.addEventListener('click', () => {
-            apiSection.style.display = 'none';
-            uiSection.style.display = 'block';
-            chatSection.style.display = 'none';
-            apiTab.classList.remove('active');
-            uiTab.classList.add('active');
-            chatTab.classList.remove('active');
-        });
-        
-        const chatTab = document.createElement('div');
-        chatTab.className = 'settings-tab';
-        chatTab.classList.toggle('active', tab === 'chat');
-        chatTab.textContent = 'Chat';
-        chatTab.addEventListener('click', () => {
-            apiSection.style.display = 'none';
-            uiSection.style.display = 'none';
-            chatSection.style.display = 'block';
-            apiTab.classList.remove('active');
-            uiTab.classList.remove('active');
-            chatTab.classList.add('active');
-        });
-        
-        tabsContainer.appendChild(apiTab);
-        tabsContainer.appendChild(uiTab);
-        tabsContainer.appendChild(chatTab);
-        
-        // Add sections to content
-        modalContent.appendChild(tabsContainer);
-        modalContent.appendChild(apiSection);
-        modalContent.appendChild(uiSection);
-        modalContent.appendChild(chatSection);
-        
-        // Add buttons
-        const modalButtons = document.createElement('div');
-        modalButtons.className = 'modal-buttons';
-        
-        const saveButton = document.createElement('button');
-        saveButton.className = 'modal-button modal-button-primary';
-        saveButton.textContent = 'Save';
-        saveButton.addEventListener('click', () => {
-            // Update config
-            this.config.API_KEY = apiKeyInput.value;
-            this.config.THEME = themeSelect.value;
-            this.config.FONT_SIZE = parseInt(fontSizeInput.value);
-            this.config.AUTO_SAVE_CHAT = autosaveCheckbox.checked;
+        for (const message of this.conversationHistory) {
+            let className = 'message';
             
-            // Apply changes
-            Config.save(this.config);
-            Config.applyTheme(this.config.THEME);
-            document.documentElement.style.setProperty('--base-font-size', `${this.config.FONT_SIZE}px`);
-            
-            // Update autosave
-            if (this.config.AUTO_SAVE_CHAT) {
-                this.setupAutosave();
-            } else if (this.autosaveInterval) {
-                clearInterval(this.autosaveInterval);
+            if (message.type === 'user') {
+                className += ' user';
+            } else if (message.type === 'assistant') {
+                className += ' assistant';
+            } else if (message.type === 'system') {
+                className += ' system';
             }
             
-            // Reinitialize client if API key changed
-            this.initializeClient();
-            
-            document.body.removeChild(modalOverlay);
-            this.updateStatusBar('Settings saved');
-        });
+            html += `
+    <div class="${className}">
+        <div class="header">
+            <span class="sender">${message.sender}</span>
+            <span class="timestamp">[${message.timestamp}]</span>
+        </div>
+        <div class="content">
+            ${message.message.replace(/\n/g, '<br>')}
+        </div>
+    </div>
+`;
+        }
         
-        const cancelButton = document.createElement('button');
-        cancelButton.className = 'modal-button modal-button-secondary';
-        cancelButton.textContent = 'Cancel';
-        cancelButton.addEventListener('click', () => {
-            document.body.removeChild(modalOverlay);
-        });
+        html += `
+</body>
+</html>`;
         
-        modalButtons.appendChild(cancelButton);
-        modalButtons.appendChild(saveButton);
+        const blob = new Blob([html], { type: 'text/html' });
+        this.downloadFile(blob, `${filename}.html`);
+    }
+    
+    /**
+     * Download a file to the user's device
+     * @param {Blob} blob - The file content as a Blob
+     * @param {string} filename - The filename
+     */
+    downloadFile(blob, filename) {
+        const url = URL.createObjectURL(blob);
         
-        // Assemble modal
-        modal.appendChild(modalHeader);
-        modal.appendChild(modalContent);
-        modal.appendChild(modalButtons);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
         
-        modalOverlay.appendChild(modal);
-        document.body.appendChild(modalOverlay);
+        document.body.appendChild(a);
+        a.click();
+        
+        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
     }
     
     /**
      * Show a modal dialog
-     * @param {string} title - The modal title
-     * @param {HTMLElement} content - The modal content
-     * @param {Array} buttons - Array of button configs
+     * @param {string} title - The dialog title
+     * @param {HTMLElement|string} content - The dialog content
+     * @param {Array<Object>} buttons - Array of button objects with text and callback properties
+     * @returns {HTMLElement} - The created dialog element
      */
     showModal(title, content, buttons = []) {
-        const modalOverlay = document.createElement('div');
-        modalOverlay.className = 'modal-overlay';
+        // Create the modal container
+        const modalContainer = document.createElement('div');
+        modalContainer.className = 'modal-container';
         
-        const modal = document.createElement('div');
-        modal.className = 'modal';
+        // Create the modal dialog
+        const modalDialog = document.createElement('div');
+        modalDialog.className = 'modal-dialog';
         
-        const modalHeader = document.createElement('div');
-        modalHeader.className = 'modal-header';
+        // Create the title bar
+        const titleBar = document.createElement('div');
+        titleBar.className = 'modal-title';
+        titleBar.textContent = title;
         
-        const modalTitle = document.createElement('div');
-        modalTitle.className = 'modal-title';
-        modalTitle.textContent = title;
-        
-        const modalClose = document.createElement('button');
-        modalClose.className = 'modal-close';
-        modalClose.textContent = '×';
-        modalClose.addEventListener('click', () => {
-            document.body.removeChild(modalOverlay);
+        // Create close button
+        const closeButton = document.createElement('button');
+        closeButton.className = 'modal-close';
+        closeButton.textContent = '×';
+        closeButton.addEventListener('click', () => {
+            document.body.removeChild(modalContainer);
         });
         
-        modalHeader.appendChild(modalTitle);
-        modalHeader.appendChild(modalClose);
+        titleBar.appendChild(closeButton);
+        modalDialog.appendChild(titleBar);
         
-        const modalContent = document.createElement('div');
-        modalContent.className = 'modal-content';
-        modalContent.appendChild(content);
+        // Create content area
+        const contentArea = document.createElement('div');
+        contentArea.className = 'modal-content';
         
-        const modalButtons = document.createElement('div');
-        modalButtons.className = 'modal-buttons';
+        if (typeof content === 'string') {
+            contentArea.innerHTML = content;
+        } else {
+            contentArea.appendChild(content);
+        }
         
-        // Add buttons
-        buttons.forEach(buttonConfig => {
-            const button = document.createElement('button');
-            button.className = 'modal-button';
-            button.classList.add(buttonConfig.primary ? 'modal-button-primary' : 'modal-button-secondary');
-            button.textContent = buttonConfig.text;
+        modalDialog.appendChild(contentArea);
+        
+        // Create button area
+        if (buttons.length > 0) {
+            const buttonArea = document.createElement('div');
+            buttonArea.className = 'modal-buttons';
             
-            button.addEventListener('click', () => {
-                if (buttonConfig.callback) {
-                    buttonConfig.callback();
+            buttons.forEach(btn => {
+                const button = document.createElement('button');
+                button.textContent = btn.text;
+                button.className = 'modal-button';
+                
+                if (btn.primary) {
+                    button.classList.add('primary');
                 }
-                document.body.removeChild(modalOverlay);
+                
+                button.addEventListener('click', () => {
+                    if (btn.callback) {
+                        btn.callback();
+                    }
+                    document.body.removeChild(modalContainer);
+                });
+                
+                buttonArea.appendChild(button);
             });
             
-            modalButtons.appendChild(button);
+            modalDialog.appendChild(buttonArea);
+        }
+        
+        modalContainer.appendChild(modalDialog);
+        document.body.appendChild(modalContainer);
+        
+        // Close when clicking outside
+        modalContainer.addEventListener('click', (e) => {
+            if (e.target === modalContainer) {
+                document.body.removeChild(modalContainer);
+            }
         });
         
-        modal.appendChild(modalHeader);
-        modal.appendChild(modalContent);
-        modal.appendChild(modalButtons);
+        return modalDialog;
+    }
+    
+    /**
+     * Show API settings dialog
+     */
+    showAPISettings() {
+        const content = document.createElement('div');
         
-        modalOverlay.appendChild(modal);
-        document.body.appendChild(modalOverlay);
+        // API Key input
+        const apiKeyLabel = document.createElement('label');
+        apiKeyLabel.textContent = 'API Key:';
+        content.appendChild(apiKeyLabel);
+        
+        const apiKeyInput = document.createElement('input');
+        apiKeyInput.type = 'password';
+        apiKeyInput.className = 'settings-input';
+        apiKeyInput.value = this.config.API_KEY || '';
+        apiKeyInput.placeholder = 'Enter your API key here';
+        content.appendChild(apiKeyInput);
+        
+        // Show the modal
+        this.showModal('API Settings', content, [
+            {
+                text: 'Save',
+                primary: true,
+                callback: () => {
+                    // Save settings
+                    this.config.API_KEY = apiKeyInput.value.trim();
+                    
+                    // Reinitialize the client with new API key
+                    this.initializeClient();
+                    
+                    // Save to storage
+                    Config.save(this.config);
+                    
+                    this.updateStatusBar('API settings saved');
+                }
+            },
+            {
+                text: 'Cancel'
+            }
+        ]);
+    }
+    
+    /**
+     * Show interface settings dialog
+     */
+    showInterfaceSettings() {
+        const content = document.createElement('div');
+        
+        // Theme selector
+        const themeLabel = document.createElement('label');
+        themeLabel.textContent = 'Theme:';
+        content.appendChild(themeLabel);
+        
+        const themeSelect = document.createElement('select');
+        themeSelect.className = 'settings-input';
+        
+        const themes = [
+            { id: 'light', name: 'Light' },
+            { id: 'dark', name: 'Dark' },
+            { id: 'sepia', name: 'Sepia' }
+        ];
+        
+        themes.forEach(theme => {
+            const option = document.createElement('option');
+            option.value = theme.id;
+            option.textContent = theme.name;
+            
+            if (theme.id === this.config.THEME) {
+                option.selected = true;
+            }
+            
+            themeSelect.appendChild(option);
+        });
+        
+        content.appendChild(themeSelect);
+        
+        // Show the modal
+        this.showModal('Interface Settings', content, [
+            {
+                text: 'Save',
+                primary: true,
+                callback: () => {
+                    // Save settings
+                    this.config.THEME = themeSelect.value;
+                    
+                    // Apply theme
+                    Config.applyTheme(this.config.THEME);
+                    
+                    // Update theme toggle icon
+                    const themeToggle = document.getElementById('theme-toggle');
+                    if (themeToggle) {
+                        themeToggle.textContent = this.config.THEME === 'dark' ? '☀️' : '🌙';
+                    }
+                    
+                    // Save to storage
+                    Config.save(this.config);
+                    
+                    this.updateStatusBar('Interface settings saved');
+                }
+            },
+            {
+                text: 'Cancel'
+            }
+        ]);
     }
 }
 
-// Create and initialize the chatbot when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.chatbot = new ClaudeChatbot();
-    
-    // Add CSS for dropdown display
-    const style = document.createElement('style');
-    style.textContent = `
-        .dropdown-menu {
-            display: none;
-            position: absolute;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            min-width: 180px;
-        }
-        
-        .dropdown-menu.active {
-            display: block;
-        }
-        
-        .dropdown-item {
-            padding: 8px 12px;
-            cursor: pointer;
-        }
-        
-        .dropdown-item:hover {
-            background-color: #f5f5f5;
-        }
-        
-        .menu-item {
-            cursor: pointer;
-            position: relative;
-            padding: 0 10px;
-        }
-        
-        .menu-item:hover {
-            background-color: rgba(0,0,0,0.05);
-        }
-        
-        /* Fix model selector duplicates */
-        #model-selector option:nth-child(n+7) {
-            display: none;
-        }
-        
-        /* Warning message styling */
-        .warning-message {
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-        }
-    `;
-    document.head.appendChild(style);
-});
-
+// Export the ClaudeChatbot class
 export { ClaudeChatbot };

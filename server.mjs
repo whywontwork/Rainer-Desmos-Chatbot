@@ -40,21 +40,87 @@ if (Object.keys(CLAUDE_MODELS).length === 0) {
     CLAUDE_MODELS = {
         "Claude 3.7 Sonnet": {
             "id": "claude-3-7-sonnet-20250219",
-            "max_tokens": 20000
+            "rpm": 50,
+            "input_tpm": 200000,
+            "max_tokens": 20000,
+            "CONTEXT_WINDOW_SIZE": 10,
+            "thinking": {
+                "enabled": true,
+                "modes": {
+                    "quick": {"budget_tokens": 4000},
+                    "balanced": {"budget_tokens": 8000},
+                    "thorough": {"budget_tokens": 16000}
+                }
+            },
+            "features": {
+                "code_generation": true,
+                "math_analysis": true,
+                "image_understanding": true
+            }
         },
-        "Claude 3.5 Sonnet": {
+        "Claude 3.5 Sonnet 2024-10-22": {
             "id": "claude-3-5-sonnet-20241022",
+            "rpm": 50,
+            "input_tpm": 8192,
+            "CONTEXT_WINDOW_SIZE": 10,
+            "max_tokens": 8192
+        },
+        "Claude 3.5 Sonnet 2024-06-20": {
+            "id": "claude-3-5-sonnet-20240620",
+            "rpm": 50,
+            "input_tpm": 8192,
+            "CONTEXT_WINDOW_SIZE": 10,
             "max_tokens": 8192
         },
         "Claude 3 Opus": {
             "id": "claude-3-opus-20240229",
+            "rpm": 50,
+            "input_tpm": 4096,
+            "CONTEXT_WINDOW_SIZE": 10,
             "max_tokens": 4096
+        },
+        "Claude 3.5 Haiku": {
+            "id": "claude-3-5-haiku-20241022",
+            "rpm": 50,
+            "input_tpm": 8192,
+            "CONTEXT_WINDOW_SIZE": 10,
+            "max_tokens": 8192
         },
         "Claude 3 Haiku": {
             "id": "claude-3-haiku-20240307",
+            "rpm": 50,
+            "input_tpm": 8192,
+            "CONTEXT_WINDOW_SIZE": 10,
             "max_tokens": 4096
         }
     };
+}
+
+/**
+ * Helper function to get appropriate max_tokens for a model
+ * @param {string} modelId - The model ID 
+ * @param {number} requestedTokens - The requested token limit
+ * @returns {number} The appropriate max_tokens value
+ */
+function getMaxTokensForModel(modelId, requestedTokens = 4096) {
+    // Search for the model in CLAUDE_MODELS
+    let modelMaxTokens = 4096; // Default fallback
+    
+    if (!modelId) {
+        return modelMaxTokens;
+    }
+    
+    // Find the model in CLAUDE_MODELS
+    for (const model of Object.values(CLAUDE_MODELS)) {
+        if (model.id === modelId) {
+            modelMaxTokens = model.max_tokens || 4096;
+            break;
+        }
+    }
+    
+    // Use the lower of the two values
+    console.log(`Model ${modelId}: Max tokens = ${modelMaxTokens}, Requested = ${requestedTokens}, Using = ${Math.min(requestedTokens || 4096, modelMaxTokens)}`);
+    return Math.min(requestedTokens || 4096, modelMaxTokens);
 }
 
 // Create Express app
@@ -112,7 +178,7 @@ app.post('/proxy/claude', async (req, res) => {
                 },
                 body: JSON.stringify({
                     model: req.body.model,
-                    max_tokens: req.body.max_tokens || 4096,
+                    max_tokens: getMaxTokensForModel(req.body.model, req.body.max_tokens),
                     messages: req.body.messages,
                     system: req.body.system
                 })
@@ -126,10 +192,52 @@ app.post('/proxy/claude', async (req, res) => {
             const message = await response.json();
             console.log("Response received from Claude API");
             
+            // Format the response - handle content array format
+            let safeContent = message.content;
+            
+            // Handle potential null/undefined content
+            if (!safeContent) {
+                console.warn('API returned empty content - using fallback');
+                safeContent = 'The API is currently experiencing high traffic. Please try again later.';
+            }
+            
+            // Handle array content format (new Claude API responses)
+            if (typeof safeContent === 'object') {
+                try {
+                    // If it's a content array (Claude messages format)
+                    if (Array.isArray(safeContent)) {
+                        console.log('Detected array content format:', JSON.stringify(safeContent).substring(0, 200));
+                        
+                        // Extract text from each item in the array
+                        const textParts = [];
+                        for (const item of safeContent) {
+                            if (item && typeof item === 'object' && item.type === 'text' && item.text) {
+                                textParts.push(item.text);
+                            }
+                        }
+                        
+                        safeContent = textParts.join('');
+                        
+                        if (!safeContent) {
+                            safeContent = 'Received empty content from API. Please try again.';
+                        }
+                    } else if (safeContent.type === 'text' && safeContent.text) {
+                        // Handle single content object
+                        safeContent = safeContent.text;
+                    } else {
+                        // Unknown object format, just stringify it
+                        safeContent = JSON.stringify(safeContent);
+                    }
+                } catch (e) {
+                    console.error('Error processing content:', e);
+                    safeContent = 'Error processing response. Please try again.';
+                }
+            }
+            
             // Format the response
             res.json({
                 id: message.id,
-                content: message.content,
+                content: safeContent,
                 role: message.role,
                 usage: message.usage
             });
@@ -164,7 +272,7 @@ app.get('/health', (req, res) => {
 });
 
 // Start the server
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
 app.listen(PORT, HOST, () => {

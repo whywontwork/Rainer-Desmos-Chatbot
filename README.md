@@ -1,6 +1,9 @@
 # Claude Assistant with Desmos Integration
 
 A web-based client for interacting with Anthropic's Claude AI models, featuring integrated Desmos graphing calculator functionality.
+NOTE - the graphing capability is glitchy when claude is responding, and sometimes doesn't know what's on the graph. I haven't yet 
+found a solution as of 2/03/2025, however I'm experimenting with claude prompting. Also, I haven't supported table generation just 
+yet, so the ascii art is the best i found atm.
 
 ## Features
 

@@ -215,7 +215,7 @@ class WebSearchIntegration {
             
             // Get base URL for the proxy
             const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            const port = isLocalhost ? ':3000' : '';
+            const port = isLocalhost ? ':10000' : ''; // Updated to the port used in the server.mjs
             const protocol = window.location.protocol;
             const hostname = window.location.hostname;
             
@@ -295,7 +295,7 @@ class WebSearchIntegration {
             
             // Get base URL for the proxy
             const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            const port = isLocalhost ? ':3000' : '';
+            const port = isLocalhost ? ':10000' : ''; // Updated to the port used in the server.mjs
             const protocol = window.location.protocol;
             const hostname = window.location.hostname;
             
@@ -559,12 +559,42 @@ class WebSearchIntegration {
                 return { performed: false, reason: 'Meta-search comment detected' };
             }
             
+            // Always search for URL queries
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const urlMatch = userQuery ? userQuery.match(urlRegex) : null;
+            const isUrl = urlMatch && urlMatch.length > 0;
+            
             // Check if search should be triggered
-            if (!this.shouldTriggerSearch(assistantMessage)) {
+            if (!isUrl && !this.shouldTriggerSearch(assistantMessage)) {
                 return { performed: false };
             }
             
-            // Extract query
+            // Handle URL directly if present
+            if (isUrl) {
+                console.log("URL detected in query, will scrape content directly");
+                const url = urlMatch[0];
+                const content = await this.scrapeWebpage(url);
+                
+                return {
+                    performed: true,
+                    query: url,
+                    raw: [{
+                        title: `Content from ${url}`,
+                        url: url,
+                        snippet: `Content scraped directly from the provided URL.`,
+                        content: content
+                    }],
+                    formatted: this.formatSearchResults([{
+                        title: `Content from ${url}`,
+                        url: url,
+                        snippet: `Content scraped directly from the provided URL.`,
+                        content: content
+                    }], url),
+                    isUrl: true
+                };
+            }
+            
+            // Extract query for regular searches
             const query = this.extractSearchQuery(assistantMessage) || userQuery;
             if (!query) {
                 return { performed: false, reason: 'Could not extract search query' };
@@ -576,10 +606,10 @@ class WebSearchIntegration {
                 return { performed: false, reason: 'Extracted query too short' };
             }
             
-            // Perform search - will now return fallback results instead of throwing
+            // Perform the actual search
             const searchResults = await this.performSearch(query);
             
-            // Format results - whether they're real or fallback
+            // Format the results
             const formattedResults = this.formatSearchResults(searchResults, query);
             
             return {

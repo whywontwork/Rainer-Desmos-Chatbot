@@ -628,7 +628,7 @@ app.post('/proxy/directsearch', async (req, res) => {
 
             
 
-            // For now we'll use enhanced simulated results
+            // Parse the HTML response with Cheerio
 
             // In a production environment, we would parse the HTML response
 

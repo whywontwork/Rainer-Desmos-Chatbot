@@ -1695,7 +1695,7 @@ Visit the source website at ${url} for more information.`;
 
 // Start the server
 const PORT = process.env.PORT || 10000;
-const HOST = process.env.HOST || "localhost";
+const HOST = process.env.HOST || '0.0.0.0';
 
 app.listen(PORT, HOST, () => {
     console.log(`Claude Proxy Server v1.0.0`);

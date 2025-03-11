@@ -1,0 +1,748 @@
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rainer-Smart | Powered by Claude 3.7 Sonnet</title>
+<style>
+    :root {
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --secondary: #10b981;
+        --dark: #1e293b;
+        --light: #f8fafc;
+        --text: #334155;
+        --text-light: #94a3b8;
+        --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        background-color: var(--light);
+        color: var(--text);
+        overflow-x: hidden;
+        position: relative;
+    }
+
+    .fluid-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        z-index: -1;
+        opacity: 0.15;
+    }
+
+    header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 1.5rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        z-index: 100;
+        box-shadow: var(--shadow);
+    }
+
+    .logo {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .logo-icon {
+        width: 40px;
+        height: 40px;
+        background-color: var(--primary);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: white;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn:hover {
+        background-color: var(--primary-dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+
+    .btn-outline {
+        background-color: transparent;
+        border: 2px solid var(--primary);
+        color: var(--primary);
+    }
+
+    .btn-outline:hover {
+        background-color: var(--primary);
+        color: white;
+    }
+
+    .hero {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 2rem;
+        padding-top: 5rem;
+    }
+
+    .hero h1 {
+        font-size: 3.5rem;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1.2;
+    }
+
+    .hero p {
+        font-size: 1.25rem;
+        max-width: 700px;
+        margin-bottom: 2rem;
+        color: var(--text-light);
+        line-height: 1.6;
+    }
+
+    .features {
+        padding: 5rem 2rem;
+        background-color: white;
+    }
+
+    .section-title {
+        text-align: center;
+        font-size: 2.5rem;
+        margin-bottom: 3rem;
+        color: var(--dark);
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .feature-card {
+        background-color: var(--light);
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: var(--shadow);
+        transition: transform 0.3s ease;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-10px);
+    }
+
+    .feature-icon {
+        width: 60px;
+        height: 60px;
+        background-color: rgba(99, 102, 241, 0.1);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        margin-bottom: 1.5rem;
+        color: var(--primary);
+        font-size: 1.5rem;
+    }
+
+    .feature-card h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        color: var(--dark);
+    }
+
+    .feature-card p {
+        color: var(--text-light);
+        line-height: 1.6;
+    }
+
+    .signup {
+        padding: 5rem 2rem;
+        background-color: var(--light);
+    }
+
+    .form-container {
+        max-width: 500px;
+        margin: 0 auto;
+        background-color: white;
+        padding: 2.5rem;
+        border-radius: 1rem;
+        box-shadow: var(--shadow);
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: var(--dark);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+
+    .btn-block {
+        display: block;
+        width: 100%;
+    }
+
+    .success-message {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: var(--secondary);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-top: 1rem;
+        display: none;
+    }
+
+    footer {
+        background-color: var(--dark);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .footer-links {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin: 1rem 0;
+    }
+
+    .footer-links a {
+        color: var(--text-light);
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+
+    .footer-links a:hover {
+        color: white;
+    }
+
+    .copyright {
+        margin-top: 2rem;
+        color: var(--text-light);
+        font-size: 0.875rem;
+    }
+
+    @media (max-width: 768px) {
+        .hero h1 {
+            font-size: 2.5rem;
+        }
+
+        .hero p {
+            font-size: 1rem;
+        }
+
+        .section-title {
+            font-size: 2rem;
+        }
+    }
+</style>
+
+
+<canvas id="fluid-canvas" class="fluid-canvas"></canvas>
+
+<header>
+    <div class="logo">
+        <div class="logo-icon">R</div>
+        Rainer-Smart
+    </div>
+    <a href="#signup" class="btn">Create Account</a>
+</header>
+
+<section class="hero">
+    <h1>Experience the Power of Claude 3.7 Sonnet</h1>
+    <p>Rainer-Smart brings you the most advanced AI assistant technology, powered by Claude 3.7 Sonnet. Get intelligent responses, creative solutions, and powerful analysis at your fingertips.</p>
+    <a href="#signup" class="btn">Get Started</a>
+</section>
+
+<section class="features" id="features">
+    <h2 class="section-title">Advanced Capabilities</h2>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon">💻</div>
+            <h3>Code Formatting</h3>
+            <p>Write, debug, and explain code in multiple languages with perfect formatting. Get assistance with syntax, algorithms, and best practices.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <h3>Desmos Integration</h3>
+            <p>Visualize mathematical concepts and data with seamless Desmos integration. Create graphs, analyze functions, and solve complex problems.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">📚</div>
+            <h3>200K Context Window</h3>
+            <p>Process and analyze up to 200,000 tokens of context in a single conversation. Handle entire documents, code repositories, and detailed research papers.</p>
+        </div>
+    </div>
+</section>
+
+<section class="signup" id="signup">
+    <h2 class="section-title">Create Your Account</h2>
+    <div class="form-container">
+        <form id="signup-form" action="initiator" method="POST">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" class="form-control" required="">
+            </div>
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" class="form-control" required="">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control" required="">
+            </div>
+            <button type="submit" class="btn btn-block">Create Account</button>
+        </form>
+        <div id="success-message" class="success-message">
+            Your account has been created successfully!
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="logo" style="color: white; justify-content: center;">
+        <div class="logo-icon">R</div>
+        Rainer-Smart
+    </div>
+    <div class="footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Contact Us</a>
+    </div>
+    <div class="copyright">
+        © 2023 Rainer-Smart. All rights reserved.
+    </div>
+</footer>
+
+<script>
+    // Fluid simulation
+    const canvas = document.getElementById('fluid-canvas');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    // Resize handling
+    window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        initFluid();
+    });
+
+    const GRID_SIZE = 50;
+    let cols, rows;
+    let fluid = [];
+    let nextFluid = [];
+    
+    // Calculate diffusion, viscous spreading of dye
+    const diffusion = 0.2;
+    // Calculate how much velocity is preserved
+    const viscosity = 0.1;
+    // Speed of fluid
+    const dt = 0.1;
+
+    function initFluid() {
+        cols = Math.floor(width / GRID_SIZE) + 2;
+        rows = Math.floor(height / GRID_SIZE) + 2;
+        
+        fluid = new Array(cols * rows).fill().map(() => ({
+            density: 0,
+            vx: 0,
+            vy: 0
+        }));
+        
+        nextFluid = new Array(cols * rows).fill().map(() => ({
+            density: 0,
+            vx: 0,
+            vy: 0
+        }));
+    }
+    
+    function getIndex(x, y) {
+        return x + y * cols;
+    }
+    
+    function addDensity(x, y, amount) {
+        const index = getIndex(Math.floor(x / GRID_SIZE) + 1, Math.floor(y / GRID_SIZE) + 1);
+        if (index >= 0 && index < fluid.length) {
+            fluid[index].density += amount;
+        }
+    }
+    
+    function addVelocity(x, y, amountX, amountY) {
+        const index = getIndex(Math.floor(x / GRID_SIZE) + 1, Math.floor(y / GRID_SIZE) + 1);
+        if (index >= 0 && index < fluid.length) {
+            fluid[index].vx += amountX;
+            fluid[index].vy += amountY;
+        }
+    }
+    
+    function diffuse(b, x, x0, diff) {
+        const a = dt * diff * (cols - 2) * (rows - 2);
+        linearSolve(b, x, x0, a, 1 + 6 * a);
+    }
+    
+    function linearSolve(b, x, x0, a, c) {
+        const cRecip = 1.0 / c;
+        for (let k = 0; k < 4; k++) {
+            for (let j = 1; j < rows - 1; j++) {
+                for (let i = 1; i < cols - 1; i++) {
+                    const index = getIndex(i, j);
+                    if (b === 1) { // For velocity X
+                        x[index].vx = (x0[index].vx + a * (
+                            x[getIndex(i + 1, j)].vx +
+                            x[getIndex(i - 1, j)].vx +
+                            x[getIndex(i, j + 1)].vx +
+                            x[getIndex(i, j - 1)].vx
+                        )) * cRecip;
+                    } else if (b === 2) { // For velocity Y
+                        x[index].vy = (x0[index].vy + a * (
+                            x[getIndex(i + 1, j)].vy +
+                            x[getIndex(i - 1, j)].vy +
+                            x[getIndex(i, j + 1)].vy +
+                            x[getIndex(i, j - 1)].vy
+                        )) * cRecip;
+                    } else { // For density
+                        x[index].density = (x0[index].density + a * (
+                            x[getIndex(i + 1, j)].density +
+                            x[getIndex(i - 1, j)].density +
+                            x[getIndex(i, j + 1)].density +
+                            x[getIndex(i, j - 1)].density
+                        )) * cRecip;
+                    }
+                }
+            }
+            setBoundary(b, x);
+        }
+    }
+    
+    function advect(b, d, d0, vx, vy) {
+        let i0, i1, j0, j1;
+        let s0, s1, t0, t1;
+        let x, y;
+        
+        const dt0 = dt * (cols - 2);
+        
+        for (let j = 1; j < rows - 1; j++) {
+            for (let i = 1; i < cols - 1; i++) {
+                const index = getIndex(i, j);
+                
+                x = i - dt0 * vx[index].vx;
+                y = j - dt0 * vy[index].vy;
+                
+                if (x < 0.5) x = 0.5;
+                if (x > cols - 1.5) x = cols - 1.5;
+                i0 = Math.floor(x);
+                i1 = i0 + 1;
+                
+                if (y < 0.5) y = 0.5;
+                if (y > rows - 1.5) y = rows - 1.5;
+                j0 = Math.floor(y);
+                j1 = j0 + 1;
+                
+                s1 = x - i0;
+                s0 = 1 - s1;
+                t1 = y - j0;
+                t0 = 1 - t1;
+                
+                const i0j0 = getIndex(i0, j0);
+                const i0j1 = getIndex(i0, j1);
+                const i1j0 = getIndex(i1, j0);
+                const i1j1 = getIndex(i1, j1);
+                
+                if (b === 1) { // For velocity X
+                    d[index].vx = s0 * (t0 * d0[i0j0].vx + t1 * d0[i0j1].vx) +
+                                  s1 * (t0 * d0[i1j0].vx + t1 * d0[i1j1].vx);
+                } else if (b === 2) { // For velocity Y
+                    d[index].vy = s0 * (t0 * d0[i0j0].vy + t1 * d0[i0j1].vy) +
+                                  s1 * (t0 * d0[i1j0].vy + t1 * d0[i1j1].vy);
+                } else { // For density
+                    d[index].density = s0 * (t0 * d0[i0j0].density + t1 * d0[i0j1].density) +
+                                      s1 * (t0 * d0[i1j0].density + t1 * d0[i1j1].density);
+                }
+            }
+        }
+        setBoundary(b, d);
+    }
+    
+    function project(vx, vy, p, div) {
+        for (let j = 1; j < rows - 1; j++) {
+            for (let i = 1; i < cols - 1; i++) {
+                const index = getIndex(i, j);
+                
+                div[index].density = -0.5 * (
+                    vx[getIndex(i + 1, j)].vx -
+                    vx[getIndex(i - 1, j)].vx +
+                    vy[getIndex(i, j + 1)].vy -
+                    vy[getIndex(i, j - 1)].vy
+                ) / cols;
+                p[index].density = 0;
+            }
+        }
+        
+        setBoundary(0, div);
+        setBoundary(0, p);
+        linearSolve(0, p, div, 1, 6);
+        
+        for (let j = 1; j < rows - 1; j++) {
+            for (let i = 1; i < cols - 1; i++) {
+                const index = getIndex(i, j);
+                
+                vx[index].vx -= 0.5 * (p[getIndex(i + 1, j)].density - p[getIndex(i - 1, j)].density) * cols;
+                vy[index].vy -= 0.5 * (p[getIndex(i, j + 1)].density - p[getIndex(i, j - 1)].density) * cols;
+            }
+        }
+        
+        setBoundary(1, vx);
+        setBoundary(2, vy);
+    }
+    
+    function setBoundary(b, x) {
+        for (let i = 1; i < cols - 1; i++) {
+            if (b === 2) {
+                x[getIndex(i, 0)].vy = -x[getIndex(i, 1)].vy;
+                x[getIndex(i, rows - 1)].vy = -x[getIndex(i, rows - 2)].vy;
+            } else {
+                x[getIndex(i, 0)].vy = x[getIndex(i, 1)].vy;
+                x[getIndex(i, rows - 1)].vy = x[getIndex(i, rows - 2)].vy;
+            }
+            
+            if (b === 1) {
+                x[getIndex(0, i)].vx = -x[getIndex(1, i)].vx;
+                x[getIndex(cols - 1, i)].vx = -x[getIndex(cols - 2, i)].vx;
+            } else {
+                x[getIndex(0, i)].vx = x[getIndex(1, i)].vx;
+                x[getIndex(cols - 1, i)].vx = x[getIndex(cols - 2, i)].vx;
+            }
+            
+            // For density
+            x[getIndex(i, 0)].density = x[getIndex(i, 1)].density;
+            x[getIndex(i, rows - 1)].density = x[getIndex(i, rows - 2)].density;
+            x[getIndex(0, i)].density = x[getIndex(1, i)].density;
+            x[getIndex(cols - 1, i)].density = x[getIndex(cols - 2, i)].density;
+        }
+        
+        // Set corners
+        x[getIndex(0, 0)].density = 0.5 * (x[getIndex(1, 0)].density + x[getIndex(0, 1)].density);
+        x[getIndex(0, rows - 1)].density = 0.5 * (x[getIndex(1, rows - 1)].density + x[getIndex(0, rows - 2)].density);
+        x[getIndex(cols - 1, 0)].density = 0.5 * (x[getIndex(cols - 2, 0)].density + x[getIndex(cols - 1, 1)].density);
+        x[getIndex(cols - 1, rows - 1)].density = 0.5 * (x[getIndex(cols - 2, rows - 1)].density + x[getIndex(cols - 1, rows - 2)].density);
+        
+        x[getIndex(0, 0)].vx = 0.5 * (x[getIndex(1, 0)].vx + x[getIndex(0, 1)].vx);
+        x[getIndex(0, rows - 1)].vx = 0.5 * (x[getIndex(1, rows - 1)].vx + x[getIndex(0, rows - 2)].vx);
+        x[getIndex(cols - 1, 0)].vx = 0.5 * (x[getIndex(cols - 2, 0)].vx + x[getIndex(cols - 1, 1)].vx);
+        x[getIndex(cols - 1, rows - 1)].vx = 0.5 * (x[getIndex(cols - 2, rows - 1)].vx + x[getIndex(cols - 1, rows - 2)].vx);
+        
+        x[getIndex(0, 0)].vy = 0.5 * (x[getIndex(1, 0)].vy + x[getIndex(0, 1)].vy);
+        x[getIndex(0, rows - 1)].vy = 0.5 * (x[getIndex(1, rows - 1)].vy + x[getIndex(0, rows - 2)].vy);
+        x[getIndex(cols - 1, 0)].vy = 0.5 * (x[getIndex(cols - 2, 0)].vy + x[getIndex(cols - 1, 1)].vy);
+        x[getIndex(cols - 1, rows - 1)].vy = 0.5 * (x[getIndex(cols - 2, rows - 1)].vy + x[getIndex(cols - 1, rows - 2)].vy);
+    }
+    
+    function step() {
+        // Velocity diffusion
+        diffuse(1, nextFluid, fluid, viscosity);
+        diffuse(2, nextFluid, fluid, viscosity);
+        
+        // Project to preserve mass
+        project(nextFluid, nextFluid, fluid, nextFluid);
+        
+        // Advection - how the velocity field moves things around
+        const temp = fluid;
+        fluid = nextFluid;
+        nextFluid = temp;
+        
+        advect(1, nextFluid, fluid, fluid, fluid);
+        advect(2, nextFluid, fluid, fluid, fluid);
+        
+        project(nextFluid, nextFluid, fluid, nextFluid);
+        
+        // Dye diffusion
+        diffuse(0, nextFluid, fluid, diffusion);
+        advect(0, fluid, nextFluid, nextFluid, nextFluid);
+        
+        // Fade density over time
+        for (let i = 0; i < fluid.length; i++) {
+            fluid[i].density *= 0.99;
+        }
+    }
+    
+    function drawFluid() {
+        ctx.clearRect(0, 0, width, height);
+        
+        for (let j = 0; j < rows - 2; j++) {
+            for (let i = 0; i < cols - 2; i++) {
+                const x = i * GRID_SIZE;
+                const y = j * GRID_SIZE;
+                const index = getIndex(i + 1, j + 1);
+                
+                const density = fluid[index].density;
+                
+                if (density > 0) {
+                    const r = Math.min(255, Math.floor(density * 100) + 50);
+                    const g = Math.min(255, Math.floor(density * 150) + 50);
+                    const b = Math.min(255, Math.floor(density * 255) + 100);
+                    
+                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${Math.min(1, density)})`;
+                    ctx.fillRect(x, y, GRID_SIZE, GRID_SIZE);
+                }
+            }
+        }
+    }
+
+    // Mouse interaction
+    let mouseX = 0;
+    let mouseY = 0;
+    let lastX = 0;
+    let lastY = 0;
+    let isMouseDown = false;
+
+    document.addEventListener('mousemove', (e) => {
+        lastX = mouseX;
+        lastY = mouseY;
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        
+        if (isMouseDown) {
+            addDensity(mouseX, mouseY, 0.5);
+            const velocityX = (mouseX - lastX) * 0.2;
+            const velocityY = (mouseY - lastY) * 0.2;
+            addVelocity(mouseX, mouseY, velocityX, velocityY);
+        }
+    });
+
+    document.addEventListener('mousedown', () => {
+        isMouseDown = true;
+    });
+
+    document.addEventListener('mouseup', () => {
+        isMouseDown = false;
+    });
+
+    // Touch interaction
+    document.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        lastX = mouseX;
+        lastY = mouseY;
+        mouseX = e.touches[0].clientX;
+        mouseY = e.touches[0].clientY;
+        
+        addDensity(mouseX, mouseY, 0.5);
+        const velocityX = (mouseX - lastX) * 0.2;
+        const velocityY = (mouseY - lastY) * 0.2;
+        addVelocity(mouseX, mouseY, velocityX, velocityY);
+    }, { passive: false });
+
+    function animate() {
+        step();
+        drawFluid();
+        requestAnimationFrame(animate);
+    }
+
+    // Add some initial density and movement
+    function addInitialFluid() {
+        for (let i = 0; i < 20; i++) {
+            const x = Math.random() * width;
+            const y = Math.random() * height;
+            addDensity(x, y, Math.random() * 0.3);
+            addVelocity(x, y, Math.random() * 2 - 1, Math.random() * 2 - 1);
+        }
+    }
+
+    initFluid();
+    addInitialFluid();
+    animate();
+
+    // Form submission
+    const form = document.getElementById('signup-form');
+    const successMessage = document.getElementById('success-message');
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value;
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        // Validate email (simple validation)
+        if (!email.includes('@') || !email.includes('.')) {
+            alert('Please enter a valid email address');
+            return;
+        }
+        
+        // Save user profile to localStorage (in a real app, this would be sent to a server)
+        const userProfile = {
+            email,
+            username,
+            password: btoa(password), // Simple encoding (not secure, just for demo)
+            createdAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem(`user_${email}`, JSON.stringify(userProfile));
+        
+        // Show success message
+        successMessage.style.display = 'block';
+        
+        // Reset form
+        form.reset();
+        
+        // Redirect to initiator (in a real app)
+        // window.location.href = 'initiator';
+        
+        // Just for demo, hide success message after 3 seconds
+        setTimeout(() => {
+            successMessage.style.display = 'none';
+        }, 3000);
+    });
+</script>

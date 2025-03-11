@@ -405,23 +405,72 @@ class DesmosIntegration {
      * Returns a string describing the current graph that can be included in messages to Rainer_Smart
      */
     getCurrentGraphAsMessage() {
-        if (!this.calculator || !this.currentGraphState) {
+        console.log("getCurrentGraphAsMessage called");
+        
+        if (!this.calculator) {
+            console.log("No calculator available");
+            return null;
+        }
+        
+        if (!this.currentGraphState) {
+            console.log("No current graph state, attempting to get it");
+            try {
+                this.currentGraphState = this.calculator.getState();
+            } catch (e) {
+                console.error("Error getting calculator state:", e);
+                return null;
+            }
+        }
+        
+        if (!this.currentGraphState) {
+            console.log("Still no graph state available");
             return null;
         }
         
         try {
+            console.log("Attempting to get expressions from state:", this.currentGraphState);
+            
             const state = this.currentGraphState;
-            const expressions = state.expressions.list
-                .filter(expr => expr.latex && expr.latex.trim())
-                .map(expr => expr.latex);
+            let expressions = [];
+            
+            if (state && state.expressions && state.expressions.list) {
+                expressions = state.expressions.list
+                    .filter(expr => expr.latex && expr.latex.trim())
+                    .map(expr => expr.latex);
+                
+                console.log("Found expressions:", expressions);
+            } else {
+                console.log("No expressions list found in state");
+            }
             
             if (expressions.length === 0) {
+                // Try to get current expressions directly from calculator
+                try {
+                    const items = this.calculator.getExpressions();
+                    console.log("Direct expressions from calculator:", items);
+                    
+                    if (items && items.length > 0) {
+                        expressions = items
+                            .filter(expr => expr.latex && expr.latex.trim())
+                            .map(expr => expr.latex);
+                        
+                        console.log("Found expressions directly from calculator:", expressions);
+                    }
+                } catch (e) {
+                    console.error("Error getting expressions directly:", e);
+                }
+            }
+            
+            if (expressions.length === 0) {
+                console.log("No expressions found");
                 return null;
             }
             
-            return `I've created a graph with the following equations:\n${expressions.map(expr => `- ${expr}`).join('\n')}`;
+            const message = `I've created a graph with the following equations:\n${expressions.map(expr => `- ${expr}`).join("\n")}`;
+            console.log("Returning graph message:", message);
+            return message;
         } catch (error) {
-            console.error('Error getting graph state:', error);
+            console.error("Error getting graph state:", error);
             return null;
         }
     }
